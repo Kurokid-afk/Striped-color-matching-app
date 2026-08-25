@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><body>pending<script>
+const req=indexedDB.open('stripeStudioCrossFileProbeDb',1);
+req.onupgradeneeded=()=>req.result.createObjectStore('data');
+req.onsuccess=()=>{
+  const tx=req.result.transaction('data','readonly');
+  const get=tx.objectStore('data').get('probe');
+  get.onsuccess=()=>document.body.textContent=get.result?.value||'missing';
+};
+</script>

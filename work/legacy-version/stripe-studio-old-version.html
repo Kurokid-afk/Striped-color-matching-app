@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><body>pending<script>
+try{
+  const project=JSON.parse(localStorage.getItem('stripeStudioProjectV1')||'{}');
+  const library=JSON.parse(localStorage.getItem('stripeStudioColorLibraryV1')||'[]');
+  const palettes=JSON.parse(localStorage.getItem('stripeStudioPalettesV1')||'[]');
+  const templates=JSON.parse(localStorage.getItem('stripeStudioStructureTemplatesV1')||'[]');
+  project.name='旧版修改后仍保留';
+  if(library[0])library[0].name='旧版改名也能同步';
+  palettes.push({name:'旧版新增色板',colors:['C991'],savedAt:Date.now()});
+  templates.push({name:'旧版新增结构',lanes:[3,6,3],savedAt:Date.now()});
+  localStorage.setItem('stripeStudioProjectV1',JSON.stringify(project));
+  localStorage.setItem('stripeStudioColorLibraryV1',JSON.stringify(library));
+  localStorage.setItem('stripeStudioPalettesV1',JSON.stringify(palettes));
+  localStorage.setItem('stripeStudioStructureTemplatesV1',JSON.stringify(templates));
+  document.body.textContent='__LEGACY_MUTATOR__'+JSON.stringify({ok:true});
+}catch(error){
+  document.body.textContent='__LEGACY_MUTATOR__'+JSON.stringify({error:String(error)});
+}
+</script>

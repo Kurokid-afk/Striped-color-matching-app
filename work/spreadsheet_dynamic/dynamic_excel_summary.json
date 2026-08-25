@@ -1,0 +1,247 @@
+{
+  "ok": true,
+  "debug": {
+    "fileMeta": "识别完成 · 4 个区域 · 41 款",
+    "activeBlockIndex": 0,
+    "productionBlockCount": 4
+  },
+  "blocks": [
+    {
+      "blockNumber": 1,
+      "start": 2,
+      "end": 53,
+      "totalRow": 54,
+      "schemes": [
+        {
+          "position": 1,
+          "text": "黑色9L+米黄18L",
+          "total": 27
+        },
+        {
+          "position": 2,
+          "text": "黑色2L+米黄11L",
+          "total": 13
+        },
+        {
+          "position": 3,
+          "text": "黑色2L+米黄6L+黑色2L+米黄6L+黑色2L+米黄7L+黑色2L+米黄7L+黑色2L+米黄7L+黑色2L+米黄7L",
+          "total": 52
+        },
+        {
+          "position": 4,
+          "text": "黑色1L+米黄4L+黑色2L+米黄5L+黑色2L+米黄5L+黑色2L+米黄5L",
+          "total": 26
+        },
+        {
+          "position": 5,
+          "text": "黑色1L+米黄1L+黑色1L+米黄5L+黑色1L+米黄7L+黑色1L+米黄1L+黑色1L+米黄5L+黑色1L+米黄7L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄3L+黑色1L+米黄11L",
+          "total": 52
+        },
+        {
+          "position": 6,
+          "text": "黑色1L+米黄1L+黑色1L+米黄3L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄2L+黑色1L+米黄2L+黑色1L+米黄4L+黑色1L+米黄5L+黑色1L+米黄6L+黑色1L+米黄7L+黑色1L+米黄9L",
+          "total": 52
+        },
+        {
+          "position": 7,
+          "text": "黑色3L+米黄23L",
+          "total": 26
+        },
+        {
+          "position": 8,
+          "text": "黑色2L+米黄2L+黑色2L+米黄20L",
+          "total": 26
+        },
+        {
+          "position": 9,
+          "text": "黑色2L+米黄5L+黑色1L+米黄17L+黑色1L+米黄1L+黑色1L+米黄10L+黑色1L+米黄13L",
+          "total": 52
+        },
+        {
+          "position": 10,
+          "text": "黑色1L+米黄5L+黑色1L+米黄1L+黑色2L+米黄16L",
+          "total": 26
+        },
+        {
+          "position": 11,
+          "text": "黑色1L+米黄1L+黑色2L+米黄2L+黑色2L+米黄1L+黑色1L+米黄16L",
+          "total": 26
+        }
+      ]
+    },
+    {
+      "blockNumber": 2,
+      "start": 57,
+      "end": 108,
+      "totalRow": 109,
+      "schemes": [
+        {
+          "position": 2,
+          "text": "黑色1L+米黄1L+黑色1L+米黄10L",
+          "total": 13
+        },
+        {
+          "position": 3,
+          "text": "黑色1L+米黄1L+黑色1L+米黄6L+黑色1L+米黄1L+黑色1L+米黄6L+黑色1L+米黄1L+黑色1L+米黄5L",
+          "total": 26
+        },
+        {
+          "position": 4,
+          "text": "黑色1L+米黄2L+黑色1L+米黄2L+黑色1L+米黄18L+黑色1L+米黄2L+黑色1L+米黄2L+黑色1L+米黄2L+黑色1L+米黄17L",
+          "total": 52
+        },
+        {
+          "position": 5,
+          "text": "黑色1L+米黄2L+黑色1L+米黄2L+黑色1L+米黄6L",
+          "total": 13
+        },
+        {
+          "position": 6,
+          "text": "黑色1L+米黄3L",
+          "total": 4
+        },
+        {
+          "position": 7,
+          "text": "黑色1L+米黄3L+黑色1L+米黄47L",
+          "total": 52
+        },
+        {
+          "position": 8,
+          "text": "黑色10L+米黄42L",
+          "total": 52
+        },
+        {
+          "position": 9,
+          "text": "黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄41L",
+          "total": 52
+        },
+        {
+          "position": 10,
+          "text": "黑色3L+米黄3L+黑色2L+米黄2L+黑色4L+米黄4L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄29L",
+          "total": 52
+        },
+        {
+          "position": 11,
+          "text": "黑色3L+米黄3L+黑色1L+米黄1L+黑色1L+米黄10L+黑色1L+米黄1L+黑色1L+米黄4L+黑色3L+米黄23L",
+          "total": 52
+        }
+      ]
+    },
+    {
+      "blockNumber": 3,
+      "start": 112,
+      "end": 163,
+      "totalRow": 164,
+      "schemes": [
+        {
+          "position": 2,
+          "text": "黑色8L+米黄9L+黑色8L+米黄9L+黑色9L+米黄9L",
+          "total": 52
+        },
+        {
+          "position": 3,
+          "text": "黑色5L+米黄8L",
+          "total": 13
+        },
+        {
+          "position": 4,
+          "text": "黑色8L+米黄5L",
+          "total": 13
+        },
+        {
+          "position": 5,
+          "text": "黑色6L+米黄12L+黑色6L+米黄11L+黑色6L+米黄11L",
+          "total": 52
+        },
+        {
+          "position": 6,
+          "text": "黑色11L+米黄6L+黑色11L+米黄6L+黑色12L+米黄6L",
+          "total": 52
+        },
+        {
+          "position": 7,
+          "text": "黑色1L+米黄2L+黑色3L+米黄19L+黑色5L+米黄22L",
+          "total": 52
+        },
+        {
+          "position": 8,
+          "text": "黑色3L+米黄3L+黑色3L+米黄3L+黑色3L+米黄17L+黑色3L+米黄17L",
+          "total": 52
+        },
+        {
+          "position": 9,
+          "text": "黑色1L+米黄1L+黑色5L+米黄1L+黑色1L+米黄18L+黑色1L+米黄1L+黑色1L+米黄22L",
+          "total": 52
+        },
+        {
+          "position": 10,
+          "text": "黑色2L+米黄2L+黑色1L+米黄8L+黑色1L+米黄3L+黑色1L+米黄8L",
+          "total": 26
+        },
+        {
+          "position": 11,
+          "text": "黑色2L+米黄1L+黑色2L+米黄4L+黑色1L+米黄2L+黑色1L+米黄2L+黑色3L+米黄2L+黑色1L+米黄2L+黑色1L+米黄4L+黑色1L+米黄2L+黑色1L+米黄4L+黑色1L+米黄2L+黑色1L+米黄4L+黑色2L+米黄6L",
+          "total": 52
+        }
+      ]
+    },
+    {
+      "blockNumber": 4,
+      "start": 167,
+      "end": 218,
+      "totalRow": 219,
+      "schemes": [
+        {
+          "position": 2,
+          "text": "黑色13L+米黄13L",
+          "total": 26
+        },
+        {
+          "position": 3,
+          "text": "黑色2L+米黄2L+黑色6L+米黄16L",
+          "total": 26
+        },
+        {
+          "position": 4,
+          "text": "黑色5L+米黄9L+黑色3L+米黄9L",
+          "total": 26
+        },
+        {
+          "position": 5,
+          "text": "黑色9L+米黄3L+黑色9L+米黄5L",
+          "total": 26
+        },
+        {
+          "position": 6,
+          "text": "黑色26L+米黄26L",
+          "total": 52
+        },
+        {
+          "position": 7,
+          "text": "黑色1L+米黄2L+黑色3L+米黄1L+黑色3L+米黄7L+黑色1L+米黄2L+黑色3L+米黄1L+黑色3L+米黄7L+黑色1L+米黄2L+黑色3L+米黄1L+黑色3L+米黄8L",
+          "total": 52
+        },
+        {
+          "position": 8,
+          "text": "黑色2L+米黄2L+黑色1L+米黄3L+黑色1L+米黄3L+黑色2L+米黄8L+黑色1L+米黄3L+黑色2L+米黄7L+黑色1L+米黄3L+黑色1L+米黄2L+黑色2L+米黄8L",
+          "total": 52
+        },
+        {
+          "position": 9,
+          "text": "黑色2L+米黄1L+黑色2L+米黄3L+黑色2L+米黄1L+黑色2L+米黄13L",
+          "total": 26
+        },
+        {
+          "position": 10,
+          "text": "黑色2L+米黄4L+黑色1L+米黄1L+黑色1L+米黄1L+黑色1L+米黄4L+黑色2L+米黄9L",
+          "total": 26
+        },
+        {
+          "position": 11,
+          "text": "黑色2L+米黄5L+黑色4L+米黄5L+黑色1L+米黄2L+黑色1L+米黄6L",
+          "total": 26
+        }
+      ]
+    }
+  ]
+}
