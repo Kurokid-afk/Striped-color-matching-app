@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -12,7 +14,8 @@ if (!sourceHtml || !inputXlsx || !outputXlsx || !summaryJson) {
 
 const html = await fs.readFile(sourceHtml, "utf8");
 const inputBase64 = (await fs.readFile(inputXlsx)).toString("base64");
-const testHtmlPath = new URL("./browser_excel_test.html", import.meta.url);
+const testRoot = await fs.mkdtemp(path.join(os.tmpdir(), "stripe-studio-excel-test-"));
+const testHtmlPath = path.join(testRoot, "browser_excel_test.html");
 
 const injection = `
 window.addEventListener('load', async () => {
@@ -74,16 +77,20 @@ const testHtml = html.replace(
 );
 await fs.writeFile(testHtmlPath, testHtml, "utf8");
 
-const edge = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const { stdout, stderr } = await execFileAsync(edge, [
-  "--headless=new",
-  "--disable-gpu",
-  "--disable-extensions",
-  "--allow-file-access-from-files",
-  "--virtual-time-budget=20000",
-  "--dump-dom",
-  testHtmlPath.pathname.slice(1),
-], { maxBuffer: 20 * 1024 * 1024, windowsHide: true });
+const electron = path.resolve("node_modules/electron/dist/electron.exe");
+const electronRunner = path.resolve("work/electron_dump_dom.cjs");
+let stdout = "";
+let stderr = "";
+try {
+  ({ stdout, stderr } = await execFileAsync(electron, [
+    electronRunner,
+    testHtmlPath,
+    "__CODEX_EXCEL_RESULT__",
+    "25000",
+  ], { maxBuffer: 20 * 1024 * 1024, windowsHide: true }));
+} finally {
+  await fs.rm(testRoot, { recursive: true, force: true });
+}
 
 const marker = "__CODEX_EXCEL_RESULT__";
 const start = stdout.lastIndexOf(marker);

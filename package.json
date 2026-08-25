@@ -1,0 +1,47 @@
+{
+  "name": "stripe-studio-desktop",
+  "version": "1.0.0",
+  "description": "条纹纺织调色、色库管理与 Excel 数格桌面应用",
+  "main": "main.js",
+  "author": "Kurokid-afk",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "self-test": "electron . --self-test",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3",
+    "png-to-ico": "3.0.2"
+  },
+  "build": {
+    "appId": "com.kurokid.stripestudio",
+    "productName": "条纹纺织调色",
+    "artifactName": "条纹纺织调色.${ext}",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "app/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "条纹纺织调色.${ext}"
+    }
+  }
+}

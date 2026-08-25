@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -8,7 +9,8 @@ const [sourceHtml] = process.argv.slice(2);
 if (!sourceHtml) throw new Error('Expected source HTML path');
 
 const html = await fs.readFile(sourceHtml, 'utf8');
-const testPath = path.resolve('work/browser_asset_project_boundary_test.html');
+const testRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'stripe-studio-asset-test-'));
+const testPath = path.join(testRoot, 'browser_asset_project_boundary_test.html');
 const injection = `
 window.addEventListener('load',async()=>{
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -62,6 +64,16 @@ window.addEventListener('load',async()=>{
       ignored:imported.ignoredEmbeddedAssets
     };
 
+    const legacyImported=await applyFixedAssetBundleData([
+      {id:'C_OLD',type:'solid',name:'旧版色库颜色',hex:'#556677'}
+    ],{silent:true});
+    const legacyBoundary={
+      mode:legacyImported.mode,
+      oldName:colorLibrary.find(x=>x.id==='C_OLD')?.name||'',
+      oldHex:colorLibrary.find(x=>x.id==='C_OLD')?.hex||'',
+      localStillPresent:colorLibrary.some(x=>x.id==='C_LOCAL')
+    };
+
     const merged=await applyFixedAssetBundleData({
       type:'stripe-studio-fixed-assets',version:2,assetRevision:5,
       assets:{
@@ -107,7 +119,7 @@ window.addEventListener('load',async()=>{
     };
 
     document.body.textContent='__ASSET_PROJECT_BOUNDARY__'+JSON.stringify({
-      exportBoundary,projectBoundary,mergeBoundary,replaceBoundary
+      exportBoundary,projectBoundary,legacyBoundary,mergeBoundary,replaceBoundary
     });
   }catch(error){
     document.body.textContent='__ASSET_PROJECT_BOUNDARY__'+JSON.stringify({
@@ -125,12 +137,17 @@ await fs.writeFile(
   'utf8'
 );
 
-const edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const { stdout, stderr } = await execFileAsync(edge, [
-  '--headless=new','--disable-gpu','--disable-extensions',
-  '--allow-file-access-from-files','--virtual-time-budget=16000',
-  '--dump-dom',testPath
-], { maxBuffer:30*1024*1024, windowsHide:true });
+const electron = path.resolve('node_modules/electron/dist/electron.exe');
+const electronRunner = path.resolve('work/electron_dump_dom.cjs');
+let stdout='';
+let stderr='';
+try{
+  ({ stdout, stderr } = await execFileAsync(electron, [
+    electronRunner,testPath,'__ASSET_PROJECT_BOUNDARY__','20000'
+  ], { maxBuffer:30*1024*1024, windowsHide:true }));
+}finally{
+  await fs.rm(testRoot,{recursive:true,force:true});
+}
 
 const marker='__ASSET_PROJECT_BOUNDARY__';
 const start=stdout.lastIndexOf(marker);
@@ -144,6 +161,7 @@ if(result.error)throw new Error(result.error);
 
 const e=result.exportBoundary;
 const p=result.projectBoundary;
+const l=result.legacyBoundary;
 const m=result.mergeBoundary;
 const r=result.replaceBoundary;
 
@@ -155,6 +173,8 @@ if(
   p.badColorExists || p.paletteName!=='本机色板' ||
   JSON.stringify(p.paletteRefs)!==JSON.stringify(['C_LOCAL']) ||
   p.savedNames.join(',')!=='本机色板' || !p.ignored ||
+  l.mode!=='merge' || l.oldName!=='旧版色库颜色' ||
+  l.oldHex!=='#556677' || !l.localStillPresent ||
   m.mode!=='merge' || m.localName!=='本机颜色' || m.localHex!=='#111111' ||
   !m.extraExists || m.localPalette?.name!=='本机色板' ||
   JSON.stringify(m.localPalette?.colors)!==JSON.stringify(['C_LOCAL']) ||
