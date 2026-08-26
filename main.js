@@ -99,7 +99,7 @@ function createMainWindow() {
     minWidth: 1180,
     minHeight: 720,
     show: false,
-    backgroundColor: '#f4f5f7',
+    backgroundColor: '#eef0f2',
     autoHideMenuBar: true,
     title: APP_NAME,
     icon: path.join(__dirname, 'build', 'icon.ico'),
@@ -156,7 +156,10 @@ function createMainWindow() {
           'exportFavoritesExcelBtn',
           'importLibraryBtn',
           'exportLibraryBtn',
-          'libraryFileInput'
+          'libraryFileInput',
+          'addTextureBtn',
+          'textureFileInput',
+          'textureNameDialogBackdrop'
         ];
         const missingIds = requiredIds.filter((id) => !document.getElementById(id));
         return {
@@ -167,6 +170,9 @@ function createMainWindow() {
             && typeof document.getElementById('excelCounterExportBtn')?.onclick === 'function',
           hasFixedAssetImport: typeof document.getElementById('importLibraryBtn')?.onclick === 'function'
             && typeof document.getElementById('libraryFileInput')?.onchange === 'function',
+          hasTextureUpload: typeof document.getElementById('addTextureBtn')?.onclick === 'function'
+            && typeof document.getElementById('textureFileInput')?.onchange === 'function'
+            && !!document.getElementById('textureNameDialogBackdrop'),
           missingIds,
           bodyVisible: getComputedStyle(document.body).display !== 'none'
         };
@@ -175,6 +181,7 @@ function createMainWindow() {
         && result.hasJsZip
         && result.hasExcelCounter
         && result.hasFixedAssetImport
+        && result.hasTextureUpload
         && result.missingIds.length === 0
         && result.bodyVisible;
       console.log(`STRIPE_STUDIO_SELF_TEST:${JSON.stringify({ passed, ...result })}`);

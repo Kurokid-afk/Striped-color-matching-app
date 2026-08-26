@@ -142,12 +142,12 @@ const reader=await makeApp("durable-version-b.html",readerInjection.replace(
 ));
 const recovery=await makeApp("durable-version-c.html",readerInjection);
 
-const edge="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const profile=await fs.mkdtemp(path.join(here,"edge-durable-profile-"));
+const electron=path.resolve("node_modules/electron/dist/electron.exe");
+const runner=path.resolve("work/electron_storage_probe.cjs");
+const profile=await fs.mkdtemp(path.join(here,"electron-durable-profile-"));
 const run=async(file,marker)=>{
-  const {stdout,stderr}=await execFileAsync(edge,[
-    "--headless=new","--disable-gpu","--disable-extensions","--allow-file-access-from-files",
-    `--user-data-dir=${profile}`,"--virtual-time-budget=12000","--dump-dom",file
+  const {stdout,stderr}=await execFileAsync(electron,[
+    runner,file,marker,profile,"20000"
   ],{maxBuffer:30*1024*1024,windowsHide:true});
   const start=stdout.lastIndexOf(marker);
   if(start<0)throw new Error(`Missing ${marker}: ${stderr.slice(0,800)}`);

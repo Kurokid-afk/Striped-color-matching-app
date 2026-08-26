@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync=promisify(execFile);
 const [sourceHtml]=process.argv.slice(2);
@@ -20,6 +22,7 @@ window.addEventListener('load',async()=>{
   const nativeAnimate=Element.prototype.animate;
 
   try{
+    for(let i=0;i<100 && !durableVaultReady;i++)await wait(20);
     colorLibrary=[
       {id:'ID_C1',type:'solid',name:'颜色1',hex:'#111111'},
       {id:'ID_C2',type:'solid',name:'颜色2',hex:'#777777'},
@@ -152,15 +155,10 @@ await fs.writeFile(
   "utf8"
 );
 
-const edge="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const {stdout,stderr}=await execFileAsync(edge,[
-  "--headless=new",
-  "--disable-gpu",
-  "--disable-extensions",
-  "--allow-file-access-from-files",
-  "--virtual-time-budget=15000",
-  "--dump-dom",
-  testHtmlPath.pathname.slice(1)
+const electron=path.resolve("node_modules/electron/dist/electron.exe");
+const runner=path.resolve("work/electron_dump_dom.cjs");
+const {stdout,stderr}=await execFileAsync(electron,[
+  runner,fileURLToPath(testHtmlPath),"__CODEX_PALETTE_SYNC_UI_RESULT__","20000"
 ],{maxBuffer:24*1024*1024,windowsHide:true});
 
 const marker="__CODEX_PALETTE_SYNC_UI_RESULT__";

@@ -18561,6 +18561,308 @@
     transition-delay:0s!important;
   }
 
+  /* ========================================================
+     Apple visual clarity pass
+     不改布局，只把颜色、层级和交互身份统一为低彩度工作台。
+     ======================================================== */
+  :root{
+    --bg:#eef0f2!important;
+    --panel:#ffffff!important;
+    --surface:#ffffff!important;
+    --surface-subtle:#f5f6f7!important;
+    --surface-hover:#eceff1!important;
+    --line:#d8dde1!important;
+    --line-strong:#bec6cc!important;
+    --text:#202528!important;
+    --muted:#727b80!important;
+    --primary:#3f5058!important;
+    --primary-hover:#33434a!important;
+    --accent:#607887!important;
+    --accent-soft:#edf2f5!important;
+    --accent-line:#cbd6dc!important;
+    --danger:#875854!important;
+    --danger-bg:#f4eceb!important;
+    --danger-line:#dfcbc8!important;
+    --focus:0 0 0 3px rgba(96,120,135,.17)!important;
+    --apple-control-top:#fbfcfc;
+    --apple-control-bottom:#eef1f2;
+    --apple-control-border:rgba(50,61,66,.13);
+    --apple-control-shadow:
+      inset 0 1px 0 rgba(255,255,255,.9),
+      0 1px 2px rgba(28,35,39,.06),
+      0 3px 8px rgba(28,35,39,.035);
+    --apple-card-shadow:
+      0 1px 2px rgba(28,35,39,.045),
+      0 8px 24px rgba(28,35,39,.045);
+  }
+
+  html,
+  body{
+    background:#eef0f2!important;
+    color:var(--text)!important;
+  }
+
+  header{
+    background:#f9fafb!important;
+    border-bottom:1px solid rgba(50,61,66,.12)!important;
+    box-shadow:0 1px 0 rgba(255,255,255,.92),0 5px 18px rgba(28,35,39,.035)!important;
+  }
+
+  .sidebar,
+  .rightbar{
+    background:#f6f7f8!important;
+    border-color:rgba(50,61,66,.10)!important;
+  }
+
+  .canvas-card,
+  .bottom-card,
+  .library-card{
+    background:#fff!important;
+    border:1px solid rgba(50,61,66,.07)!important;
+    box-shadow:var(--apple-card-shadow)!important;
+  }
+
+  .canvas-wrap,
+  .library-table-wrap{
+    background:#fbfcfc!important;
+    box-shadow:inset 0 0 0 1px rgba(50,61,66,.065)!important;
+  }
+
+  .sidebar .section h3,
+  .rightbar .section h3,
+  .library-card h2,
+  .canvas-title,
+  .scheme-title{
+    color:#2d363a!important;
+  }
+
+  .sidebar .section h3::before,
+  .rightbar .section h3::before{
+    background:#607887!important;
+    opacity:.78!important;
+  }
+
+  .btn,
+  button:not(.color-chip):not(.scheme-preview-frame),
+  .stripe-tertiary-btn,
+  .library-entry-btn,
+  .saved-palette-trigger,
+  .saved-palette-option{
+    color:#3f494e!important;
+    border:1px solid var(--apple-control-border)!important;
+    background:linear-gradient(180deg,var(--apple-control-top),var(--apple-control-bottom))!important;
+    box-shadow:var(--apple-control-shadow)!important;
+    text-shadow:none!important;
+  }
+
+  .btn:hover:not(:disabled),
+  button:hover:not(:disabled){
+    color:#253035!important;
+    border-color:rgba(50,61,66,.19)!important;
+    background:linear-gradient(180deg,#fff,#e8ecee)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.95),
+      0 2px 4px rgba(28,35,39,.07),
+      0 7px 15px rgba(28,35,39,.055)!important;
+  }
+
+  .btn.primary,
+  button.primary,
+  .btn.active,
+  button.active,
+  .canvas-mode-btn.active,
+  .scheme-filter-btn.active,
+  .library-entry-btn.active{
+    color:#fff!important;
+    border-color:#3f5058!important;
+    background:linear-gradient(180deg,#53666f,#3f5058)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.19),
+      0 1px 2px rgba(28,35,39,.12),
+      0 5px 12px rgba(45,57,63,.14)!important;
+  }
+
+  .btn.primary:hover:not(:disabled),
+  button.primary:hover:not(:disabled),
+  .btn.active:hover:not(:disabled),
+  button.active:hover:not(:disabled){
+    color:#fff!important;
+    border-color:#33434a!important;
+    background:linear-gradient(180deg,#4a5d65,#33434a)!important;
+  }
+
+  .btn.danger,
+  button.danger,
+  .item-delete-x,
+  .palette-remove-btn,
+  .saved-palette-option-delete{
+    color:#875854!important;
+    border-color:rgba(135,88,84,.12)!important;
+    background:#f4eceb!important;
+    box-shadow:inset 0 0 0 1px rgba(135,88,84,.05)!important;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea{
+    color:#293237!important;
+    background:#f3f5f6!important;
+    border:1px solid rgba(50,61,66,.11)!important;
+    box-shadow:inset 0 1px 2px rgba(28,35,39,.035)!important;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus,
+  textarea:focus{
+    background:#fff!important;
+    border-color:#8296a1!important;
+    box-shadow:var(--focus)!important;
+    outline:0!important;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"]{
+    accent-color:#607887!important;
+  }
+
+  input[type="checkbox"]:checked{
+    background:linear-gradient(180deg,#718995,#607887)!important;
+    border-color:#607887!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.2),
+      0 2px 5px rgba(60,78,87,.16)!important;
+  }
+
+  #randomStripeBtn,
+  .stripe-random-control #randomStripeBtn,
+  .random-options-btn{
+    color:#3f5058!important;
+    border-color:var(--apple-control-border)!important;
+    background:linear-gradient(180deg,var(--apple-control-top),var(--apple-control-bottom))!important;
+    box-shadow:var(--apple-control-shadow)!important;
+  }
+
+  #randomStripeBtn:hover,
+  .random-options-btn:hover{
+    color:#253035!important;
+    background:linear-gradient(180deg,#fff,#e8ecee)!important;
+  }
+
+  .stripe-toolbar-smart{
+    background:#f1f3f4!important;
+    box-shadow:inset 0 0 0 1px rgba(50,61,66,.07)!important;
+  }
+
+  .idx-role,
+  .stripe-item.selected .idx-role{
+    color:#536873!important;
+    background:#edf2f4!important;
+    box-shadow:inset 0 0 0 1px rgba(83,104,115,.13)!important;
+  }
+
+  .stripe-role-option.selected{
+    background:#edf2f4!important;
+    box-shadow:inset 3px 0 0 #607887!important;
+  }
+
+  .stripe-role-option-check{
+    color:#607887!important;
+  }
+
+  .stripe-tool-popover{
+    animation:none!important;
+  }
+
+  .stripe-role-popover{
+    opacity:1!important;
+    transition:none!important;
+  }
+
+  .texture-dialog-swatch{
+    background-color:#e7eaec!important;
+    background-position:center!important;
+    background-repeat:repeat!important;
+    background-size:cover!important;
+  }
+
+  #addTextureBtn.is-dragover{
+    color:#2d3b41!important;
+    border-color:#8296a1!important;
+    background:#e7edf0!important;
+    box-shadow:0 0 0 3px rgba(96,120,135,.14)!important;
+  }
+
+  #textureNameDialogBackdrop.ui-overlay-closing{
+    pointer-events:none!important;
+  }
+
+  .stripe-item,
+  .role-item,
+  .swatch,
+  .scheme,
+  .favorite-tile,
+  .library-resource-row,
+  .library-search-item,
+  .stripe-template-row,
+  .saved-palette-option{
+    background:#fff!important;
+    border-color:rgba(50,61,66,.09)!important;
+    box-shadow:0 1px 2px rgba(28,35,39,.04)!important;
+  }
+
+  .stripe-item:hover,
+  .role-item:hover,
+  .swatch:hover,
+  .scheme:hover,
+  .favorite-tile:hover,
+  .library-resource-row:hover,
+  .library-search-item:hover{
+    border-color:rgba(72,91,100,.18)!important;
+    box-shadow:0 2px 5px rgba(28,35,39,.06),0 8px 18px rgba(28,35,39,.04)!important;
+  }
+
+  .stripe-item.selected,
+  #schemes .scheme.selected,
+  #schemes .scheme.compare-selected,
+  #schemes .scheme.previewing,
+  .role-item.role-replace-target{
+    background:#f1f5f7!important;
+    border-color:#9eafb8!important;
+    box-shadow:inset 3px 0 0 #607887,0 3px 12px rgba(55,70,77,.08)!important;
+    outline:0!important;
+  }
+
+  .top-action-group,
+  .toolbar,
+  .stripe-toolbar,
+  .palette-actions,
+  .canvas-repeat-actions{
+    border-color:rgba(50,61,66,.08)!important;
+  }
+
+  .muted,
+  .hint,
+  small,
+  .canvas-meta-label{
+    color:#788187!important;
+  }
+
+  #toast{
+    color:#fff!important;
+    background:#39474d!important;
+    border:1px solid rgba(255,255,255,.09)!important;
+    box-shadow:0 12px 30px rgba(25,31,34,.2)!important;
+  }
+
+  ::-webkit-scrollbar-thumb{
+    background:#aab2b6!important;
+    border-color:#f6f7f8!important;
+  }
+
+  ::-webkit-scrollbar-thumb:hover{
+    background:#8f999e!important;
+  }
+
   /* 用户指定保留：选中条纹仍由 pulsePatternRects 原样高亮两次。 */
 
   @media (prefers-reduced-motion:reduce){
@@ -19017,7 +19319,7 @@
           <div class="library-toolbar">
             <input id="librarySearch" type="text" placeholder="搜索名字 / ID / HEX"/>
             <button class="btn primary" id="addLibraryColorBtn">+ 新增纯色</button>
-            <button class="btn soft" id="addTextureBtn">+ 上传花灰 / 纹理</button>
+            <button class="btn soft" id="addTextureBtn" title="点击选择图片，或直接把图片拖到这里">+ 上传 / 拖入花灰纹理</button>
           </div>
           <div class="library-table-wrap">
             <table class="library-table">
@@ -19079,6 +19381,32 @@
     <div class="color-name-dialog-actions">
       <button class="btn ghost" id="colorNameDialogCancel">取消</button>
       <button class="btn primary" id="colorNameDialogConfirm">加入色板并入库</button>
+    </div>
+  </div>
+</div>
+
+<div id="textureNameDialogBackdrop" class="color-name-dialog-backdrop hidden" aria-hidden="true">
+  <div class="color-name-dialog texture-name-dialog" role="dialog" aria-modal="true" aria-labelledby="textureNameDialogTitle">
+    <div class="color-name-dialog-head">
+      <div>
+        <div id="textureNameDialogTitle" class="color-name-dialog-title">保存图片纹理</div>
+        <div class="color-name-dialog-subtitle">图片会在本机优化后写入色库，不会上传网络</div>
+      </div>
+      <button id="textureNameDialogClose" class="color-name-dialog-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="color-name-dialog-body">
+      <div id="textureNameDialogSwatch" class="color-name-dialog-swatch texture-dialog-swatch"></div>
+      <div class="color-name-dialog-fields">
+        <label>
+          <span>纹理名字</span>
+          <input id="textureNameDialogInput" type="text" maxlength="80" placeholder="例如：40S浅花灰" autocomplete="off"/>
+        </label>
+        <div id="textureNameDialogMeta" class="texture-upload-note">等待读取图片</div>
+      </div>
+    </div>
+    <div class="color-name-dialog-actions">
+      <button class="btn ghost" id="textureNameDialogCancel">取消</button>
+      <button class="btn primary" id="textureNameDialogConfirm">优化图片并加入色库</button>
     </div>
   </div>
 </div>
@@ -23632,6 +23960,304 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
   }
 
+  /* ---------- Universal Apple interaction motion ----------
+     所有动作先反馈“按下”，再让实际发生变化的对象连续归位。
+     只使用 transform / shadow / color，不制造整面透明或白色闪帧。
+  */
+  const appleActionMotion=new WeakMap();
+  const appleControlMotion=new WeakMap();
+  let appleLayoutBefore=null;
+  let appleLayoutUntil=0;
+  let appleLayoutFrame=0;
+  let appleLayoutObserver=null;
+
+  function appleActionSurface(raw){
+    if(!(raw instanceof Element))return null;
+
+    const direct=raw.closest([
+      'button:not(:disabled)',
+      '.btn:not(:disabled)',
+      'select:not(:disabled)',
+      'input[type="checkbox"]:not(:disabled)',
+      'input[type="radio"]:not(:disabled)',
+      '.scheme-preview-frame',
+      '.image-dropzone',
+      '.excel-counter-drop',
+      '.library-search-item',
+      '.saved-palette-option',
+      '.role-group-head',
+      '.library-group-head'
+    ].join(','));
+
+    if(direct)return direct;
+
+    const favorite=raw.closest('.favorite-tile');
+    if(favorite)return favorite.querySelector('svg')||favorite;
+
+    const swatch=raw.closest('.swatch');
+    if(swatch)return swatch.querySelector('.swatch-color')||swatch;
+
+    return null;
+  }
+
+  function cancelAppleMotion(map,el){
+    const running=map.get(el);
+    try{running?.cancel();}catch(_){ }
+    map.delete(el);
+  }
+
+  function applePressSurface(el){
+    if(!el || uiReducedMotion() || typeof el.animate!=='function')return;
+    cancelAppleMotion(appleActionMotion,el);
+
+    const large=
+      el.matches('.scheme-preview-frame,.image-dropzone,.excel-counter-drop,svg') ||
+      el.getBoundingClientRect().width>240;
+    const scale=large ? .985 : .965;
+
+    const animation=el.animate(
+      [
+        {transform:'translate3d(0,0,0) scale(1)'},
+        {transform:`translate3d(0,1px,0) scale(${scale})`}
+      ],
+      {
+        duration:85,
+        easing:'cubic-bezier(.32,0,.67,0)',
+        fill:'both'
+      }
+    );
+
+    appleActionMotion.set(el,animation);
+  }
+
+  function appleReleaseSurface(el){
+    if(!el || uiReducedMotion() || typeof el.animate!=='function')return;
+
+    const large=
+      el.matches('.scheme-preview-frame,.image-dropzone,.excel-counter-drop,svg') ||
+      el.getBoundingClientRect().width>240;
+    const scale=large ? .985 : .965;
+
+    cancelAppleMotion(appleActionMotion,el);
+
+    const animation=el.animate(
+      [
+        {transform:`translate3d(0,1px,0) scale(${scale})`},
+        {transform:'translate3d(0,0,0) scale(1)'}
+      ],
+      {
+        duration:215,
+        easing:'cubic-bezier(.2,.8,.2,1)',
+        fill:'none'
+      }
+    );
+
+    appleActionMotion.set(el,animation);
+    animation.finished.catch(()=>{}).finally(()=>{
+      if(appleActionMotion.get(el)===animation){
+        appleActionMotion.delete(el);
+      }
+    });
+  }
+
+  function appleCommitControl(raw,{continuous=false}={}){
+    if(!(raw instanceof Element) || uiReducedMotion())return;
+
+    const el=raw.matches('input,select,textarea')
+      ? raw
+      : raw.closest('input,select,textarea,button');
+    if(!el || typeof el.animate!=='function')return;
+
+    if(continuous){
+      const last=Number(el.dataset.appleMotionAt)||0;
+      if(performance.now()-last<90)return;
+      el.dataset.appleMotionAt=String(performance.now());
+    }
+
+    cancelAppleMotion(appleControlMotion,el);
+
+    const compact=el.matches('[type="checkbox"],[type="radio"]');
+    const animation=el.animate(
+      compact
+        ? [
+            {transform:'scale(.82)'},
+            {transform:'scale(1)'}
+          ]
+        : [
+            {
+              transform:'translate3d(0,1px,0)',
+              boxShadow:'0 0 0 3px rgba(96,120,135,.16), inset 0 1px 2px rgba(28,35,39,.04)'
+            },
+            {
+              transform:'translate3d(0,0,0)',
+              boxShadow:'0 0 0 0 rgba(96,120,135,0), inset 0 1px 2px rgba(28,35,39,.04)'
+            }
+          ],
+      {
+        duration:compact?210:260,
+        easing:'cubic-bezier(.2,.8,.2,1)',
+        fill:'none'
+      }
+    );
+
+    appleControlMotion.set(el,animation);
+    animation.finished.catch(()=>{}).finally(()=>{
+      if(appleControlMotion.get(el)===animation){
+        appleControlMotion.delete(el);
+      }
+    });
+  }
+
+  function appleLayoutKey(el){
+    if(!el)return '';
+    if(el.dataset.sortKey)return `sort:${el.dataset.sortKey}`;
+    if(el.matches('#roles .role-item[data-role]'))return `role:${el.dataset.role}`;
+    if(el.matches('.role-usage-segment[data-role]'))return `usage:${el.dataset.role}`;
+    if(el.id)return `id:${el.id}`;
+    return '';
+  }
+
+  function captureAppleLayout(){
+    const map=new Map();
+    $$([
+      '[data-sort-key]',
+      '#roles .role-item[data-role]',
+      '.role-usage-segment[data-role]',
+      '#canvasHint',
+      '#roleUsageBar',
+      '#schemes'
+    ].join(',')).forEach(el=>{
+      const key=appleLayoutKey(el);
+      if(!key || !el.isConnected)return;
+      const rect=el.getBoundingClientRect();
+      if(rect.width<1 || rect.height<1)return;
+      map.set(key,{rect});
+    });
+    appleLayoutBefore=map;
+    appleLayoutUntil=performance.now()+1100;
+  }
+
+  function playAppleLayout(){
+    cancelAnimationFrame(appleLayoutFrame);
+    if(!appleLayoutBefore || performance.now()>appleLayoutUntil)return;
+
+    let played=0;
+
+    $$([
+        '[data-sort-key]',
+        '#roles .role-item[data-role]',
+        '.role-usage-segment[data-role]',
+        '#canvasHint',
+        '#roleUsageBar',
+        '#schemes'
+    ].join(',')).forEach((el,index)=>{
+        if(!el.isConnected || typeof el.animate!=='function')return;
+        const key=appleLayoutKey(el);
+        const old=appleLayoutBefore.get(key);
+        const now=el.getBoundingClientRect();
+
+        if(!old){
+          if(el.matches('.role-usage-segment'))return;
+          const animation=el.animate(
+            [
+              {transform:'translate3d(0,8px,0) scale(.97)'},
+              {transform:'translate3d(0,0,0) scale(1)'}
+            ],
+            {
+              duration:280,
+              delay:Math.min(index*10,70),
+              easing:'cubic-bezier(.2,.8,.2,1)'
+            }
+          );
+          animation.finished.catch(()=>{});
+          played+=1;
+          return;
+        }
+
+        const dx=old.rect.left-now.left;
+        const dy=old.rect.top-now.top;
+        if(Math.abs(dx)<.6 && Math.abs(dy)<.6)return;
+
+        const distance=Math.hypot(dx,dy);
+        const animation=el.animate(
+          [
+            {transform:`translate3d(${dx}px,${dy}px,0)`},
+            {transform:'translate3d(0,0,0)'}
+          ],
+          {
+            duration:Math.max(250,Math.min(430,270+distance*.18)),
+            easing:'cubic-bezier(.2,.8,.2,1)'
+          }
+        );
+        animation.finished.catch(()=>{});
+        played+=1;
+    });
+
+    if(played){
+      document.body.dataset.appleLayoutMotions=String(
+        (Number(document.body.dataset.appleLayoutMotions)||0)+played
+      );
+    }
+  }
+
+  function installUniversalAppleMotion(){
+    if(document.body.dataset.appleMotionInstalled==='1')return;
+    document.body.dataset.appleMotionInstalled='1';
+
+    document.addEventListener('pointerdown',event=>{
+      captureAppleLayout();
+      const surface=appleActionSurface(event.target);
+      if(!surface)return;
+      surface.dataset.applePressed='1';
+      applePressSurface(surface);
+    },true);
+
+    const release=event=>{
+      const surface=appleActionSurface(event.target);
+      if(!surface)return;
+      delete surface.dataset.applePressed;
+      appleReleaseSurface(surface);
+    };
+
+    document.addEventListener('pointerup',release,true);
+    document.addEventListener('pointercancel',release,true);
+
+    document.addEventListener('keydown',event=>{
+      if(event.key!=='Enter' && event.key!==' ')return;
+      captureAppleLayout();
+      applePressSurface(appleActionSurface(event.target));
+    },true);
+
+    document.addEventListener('keyup',event=>{
+      if(event.key!=='Enter' && event.key!==' ')return;
+      appleReleaseSurface(appleActionSurface(event.target));
+    },true);
+
+    document.addEventListener('input',event=>{
+      captureAppleLayout();
+      const type=String(event.target?.type||'').toLowerCase();
+      if(['range','number','color'].includes(type)){
+        appleCommitControl(event.target,{continuous:true});
+      }
+    },true);
+
+    document.addEventListener('change',event=>{
+      captureAppleLayout();
+      appleCommitControl(event.target);
+    },true);
+
+    appleLayoutObserver=new MutationObserver(mutations=>{
+      if(!appleLayoutBefore || performance.now()>appleLayoutUntil)return;
+      if(!mutations.some(item=>item.type==='childList'))return;
+      playAppleLayout();
+    });
+
+    appleLayoutObserver.observe(document.body,{
+      childList:true,
+      subtree:true
+    });
+  }
+
   const uiOverlayMotion=new WeakMap();
 
   function uiCancelOverlayMotion(owner){
@@ -23665,8 +24291,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     backdrop,
     surface,
     contents=[],
-    distance=10,
-    duration=260
+    distance=14,
+    duration=300
   }){
     if(!backdrop || !surface)return Promise.resolve();
 
@@ -23703,7 +24329,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         [
           {
             opacity:1,
-            transform:`translateY(${distance}px) scale(.985)`,
+            transform:`translateY(${distance}px) scale(.97)`,
             boxShadow:'0 4px 12px rgba(31,38,40,.06)'
           },
           {
@@ -23724,7 +24350,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       animations.push(
         el.animate(
           [
-            {transform:'translateY(5px)'},
+            {transform:'translateY(8px)'},
             {transform:'translateY(0)'}
           ],
           {
@@ -23747,8 +24373,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   async function uiCloseOverlay({
     backdrop,
     surface,
-    distance=7,
-    duration=190,
+    distance=10,
+    duration=210,
     hide=true
   }){
     if(!backdrop || !surface)return;
@@ -23767,7 +24393,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             {opacity:1,transform:'translateY(0) scale(1)'},
             {
               opacity:1,
-              transform:`translateY(${distance}px) scale(.985)`,
+              transform:`translateY(${distance}px) scale(.975)`,
               boxShadow:'0 4px 12px rgba(31,38,40,.05)'
             }
           ],
@@ -23888,10 +24514,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiAnimate(
       el,
       [
-        {transform:'translateY(7px) scale(.99)'},
+        {transform:'translateY(12px) scale(.975)'},
         {transform:'translateY(0) scale(1)'}
       ],
-      {duration:250,easing:'cubic-bezier(.2,.8,.2,1)'}
+      {duration:300,easing:'cubic-bezier(.2,.8,.2,1)'}
     );
   }
 
@@ -25540,18 +26166,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return found?.name || fallback || '未命名颜色';
   }
   function saveColorLibrary({touchAssets=true,reason='color-library'}={}){
+    let legacyOk=true;
     try{
       localStorage.setItem(COLOR_LIBRARY_KEY,JSON.stringify(colorLibrary));
-      if(touchAssets)touchFixedAssetRevision();
-      if(durableVaultReady)saveDurableVaultNow(reason);
-      return true;
     }catch(err){
+      legacyOk=false;
       console.error('saveColorLibrary failed',err);
-      toast('色库本地保存失败：可能是纹理图片过大或浏览器存储空间不足');
+    }
+
+    if(touchAssets)touchFixedAssetRevision();
+    if(durableVaultReady)saveDurableVaultNow(reason);
+
+    // IndexedDB 保险存档是桌面正式版的主存储，容量远高于旧版 localStorage。
+    // 兼容副本写满时仍允许纹理进入保险存档；随后由调用方等待并核验主存档。
+    if(!legacyOk && !durableVaultReady){
+      toast('色库本地保存失败：存储空间不足，请缩小纹理图片后重试');
       return false;
     }
+    return true;
   }
   function loadColorLibrary(){
+    if(Array.isArray(durableVaultCachedData?.colorLibrary)){
+      colorLibrary=deepClone(durableVaultCachedData.colorLibrary);
+      return;
+    }
     try{
       const saved=JSON.parse(localStorage.getItem(COLOR_LIBRARY_KEY)||'[]');
       colorLibrary=Array.isArray(saved)?saved:[];
@@ -27192,10 +27830,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     if(schemeMotion){
       [
-        {el:$('.sidebar'),from:'translateX(-5px)',delay:0},
-        {el:$('.canvas-card'),from:'translateY(3px) scale(.998)',delay:24},
-        {el:$('.bottom-card'),from:'translateY(4px)',delay:48},
-        {el:$('.rightbar'),from:'translateX(5px)',delay:72}
+        {el:$('.sidebar'),from:'translateX(-10px)',delay:0},
+        {el:$('.canvas-card'),from:'translateY(7px) scale(.996)',delay:24},
+        {el:$('.bottom-card'),from:'translateY(9px)',delay:48},
+        {el:$('.rightbar'),from:'translateX(10px)',delay:72}
       ].forEach(({el,from,delay})=>{
         uiAnimate(
           el,
@@ -27203,7 +27841,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             {transform:from},
             {transform:'translate(0,0) scale(1)'}
           ],
-          {duration:280,delay,easing:'cubic-bezier(.2,.8,.2,1)'}
+          {duration:360,delay,easing:'cubic-bezier(.2,.8,.2,1)'}
         );
       });
 
@@ -27234,10 +27872,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       uiAnimate(
         row,
         [
-          {transform:'translateX(-7px)'},
+          {transform:'translateX(-11px)'},
           {transform:'translateX(0)'}
         ],
-        {duration:schemeMotion?340:270,delay}
+        {duration:schemeMotion?390:300,delay}
       );
 
       uiAnimate(
@@ -27260,10 +27898,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       uiAnimate(
         card,
         [
-          {transform:'translateX(8px)'},
+          {transform:'translateX(12px)'},
           {transform:'translateX(0)'}
         ],
-        {duration:schemeMotion?340:270,delay}
+        {duration:schemeMotion?390:300,delay}
       );
 
       uiAnimate(
@@ -27281,8 +27919,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     if(paletteChanged){
       uiStaggerIn($$('#paletteGrid .swatch'),{
-        distance:5,
-        duration:300,
+        distance:9,
+        duration:340,
         step:22,
         axis:'y'
       });
@@ -27292,10 +27930,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       uiAnimate(
         $('#schemes'),
         [
-          {transform:'translateY(5px)'},
+          {transform:'translateY(9px)'},
           {transform:'translateY(0)'}
         ],
-        {duration:280}
+        {duration:330}
       );
     }
 
@@ -27305,10 +27943,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         .forEach((el,index)=>uiAnimate(
           el,
           [
-            {transform:'translateY(3px)'},
+            {transform:'translateY(6px)'},
             {transform:'translateY(0)'}
           ],
-          {duration:220,delay:index*28}
+          {duration:270,delay:index*28}
         ));
     }
 
@@ -27353,20 +27991,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
 
   function animatePopIn(el,{
-    duration=260,
-    distance=7,
-    scale=.97
+    duration=300,
+    distance=10,
+    scale=.965
   }={}){
     if(!el || typeof el.animate!=='function')return Promise.resolve();
 
     const anim=el.animate(
       [
         {
-          opacity:.88,
           transform:`translateY(${distance}px) scale(${scale})`
         },
         {
-          opacity:1,
           transform:'translateY(0) scale(1)'
         }
       ],
@@ -27380,9 +28016,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function animatePopMany(elements,{
-    step=36,
-    duration=260,
-    distance=7
+    step=30,
+    duration=300,
+    distance=10
   }={}){
     return Promise.all(
       (elements||[]).filter(Boolean).map((el,i)=>{
@@ -27390,8 +28026,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         const anim=el.animate(
           [
-            {opacity:.88,transform:`translateY(${distance}px) scale(.97)`},
-            {opacity:1,transform:'translateY(0) scale(1)'}
+            {transform:`translateY(${distance}px) scale(.965)`},
+            {transform:'translateY(0) scale(1)'}
           ],
           {
             duration,
@@ -27419,6 +28055,156 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     return map;
+  }
+
+  function capturePatternVisualState(){
+    const svg=$('#patternSvg');
+    const map=new Map();
+
+    svg?.querySelectorAll(
+      'rect[data-stripe-key][data-repeat-index]'
+    ).forEach(el=>{
+      const key=`${el.dataset.stripeKey}::${el.dataset.repeatIndex}`;
+      const rect=el.getBoundingClientRect();
+      map.set(key,{
+        rect:{
+          left:rect.left,
+          top:rect.top,
+          width:rect.width,
+          height:rect.height
+        },
+        fill:el.getAttribute('fill')||'',
+        role:el.dataset.role||''
+      });
+    });
+
+    return map;
+  }
+
+  function animatePatternVisualState(previous,{duration=330}={}){
+    const svg=$('#patternSvg');
+    if(
+      !svg ||
+      !previous?.size ||
+      uiReducedMotion() ||
+      typeof svg.animate!=='function'
+    )return false;
+
+    const rects=[
+      ...svg.querySelectorAll(
+        'rect[data-stripe-key][data-repeat-index]'
+      )
+    ];
+
+    // 极端循环数时让画布整体连续归位，避免同时创建上千条动画拖低帧率。
+    const perBand=rects.length<=600;
+    let changed=0;
+
+    if(perBand){
+      rects.forEach((el,index)=>{
+        if(typeof el.animate!=='function')return;
+
+        const key=`${el.dataset.stripeKey}::${el.dataset.repeatIndex}`;
+        const old=previous.get(key);
+        const now=el.getBoundingClientRect();
+        const nextFill=el.getAttribute('fill')||'';
+
+        if(!old){
+          changed+=1;
+          const horizontal=now.width>=now.height;
+          el.animate(
+            [
+              {
+                transform:horizontal?'scaleY(.08)':'scaleX(.08)',
+                transformOrigin:'center'
+              },
+              {
+                transform:'scale(1)',
+                transformOrigin:'center'
+              }
+            ],
+            {
+              duration:Math.min(360,duration+20),
+              delay:Math.min(index*2,45),
+              easing:'cubic-bezier(.2,.8,.2,1)'
+            }
+          );
+          return;
+        }
+
+        const dx=old.rect.left-now.left;
+        const dy=old.rect.top-now.top;
+        const sx=now.width>0 ? old.rect.width/now.width : 1;
+        const sy=now.height>0 ? old.rect.height/now.height : 1;
+        const geometryChanged=
+          Math.abs(dx)>.35 ||
+          Math.abs(dy)>.35 ||
+          Math.abs(sx-1)>.003 ||
+          Math.abs(sy-1)>.003;
+        const fillChanged=old.fill!==nextFill;
+
+        if(!geometryChanged && !fillChanged)return;
+        changed+=1;
+
+        if(geometryChanged){
+          el.animate(
+            [
+              {
+                transform:`translate3d(${dx}px,${dy}px,0) scale(${sx},${sy})`,
+                transformOrigin:'0 0'
+              },
+              {
+                transform:'translate3d(0,0,0) scale(1,1)',
+                transformOrigin:'0 0'
+              }
+            ],
+            {
+              duration,
+              easing:'cubic-bezier(.2,.8,.2,1)'
+            }
+          );
+        }
+
+        if(fillChanged){
+          const solid=
+            /^#[0-9a-f]{3,8}$/i.test(old.fill) &&
+            /^#[0-9a-f]{3,8}$/i.test(nextFill);
+
+          el.animate(
+            solid
+              ? [
+                  {fill:old.fill},
+                  {fill:nextFill}
+                ]
+              : [
+                  {filter:'saturate(.72) brightness(.94)'},
+                  {filter:'saturate(1) brightness(1)'}
+                ],
+            {
+              duration:Math.max(260,duration-20),
+              easing:'cubic-bezier(.2,.8,.2,1)'
+            }
+          );
+        }
+      });
+    }else{
+      changed=1;
+    }
+
+    if(changed){
+      svg.animate(
+        [
+          {transform:'translate3d(0,4px,0) scale(.996)'},
+          {transform:'translate3d(0,0,0) scale(1)'}
+        ],
+        {
+          duration:Math.max(duration,360),
+          easing:'cubic-bezier(.2,.8,.2,1)'
+        }
+      );
+    }
+
+    return changed>0;
   }
 
   function animatePatternBandLayout(previousRects,movingStripeIds=[]){
@@ -27516,11 +28302,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     svg.animate(
       [
         {
-          transform:'translateY(1.5px) scale(.9975)'
+          transform:'translate3d(0,4px,0) scale(.996)'
         },
         {
           opacity:1,
-          transform:'translateY(0) scale(1)'
+          transform:'translate3d(0,0,0) scale(1)'
         }
       ],
       {
@@ -28086,11 +28872,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     const animation=pop.animate(
       [
-        {opacity:1,transform:'translateY(0) scale(1)'},
-        {opacity:0,transform:'translateY(-4px) scale(.975)'}
+        {transform:'translateY(0) scale(1)'},
+        {transform:'translateY(-8px) scale(.97)'}
       ],
       {
-        duration:175,
+        duration:190,
         easing:'cubic-bezier(.4,0,.7,.2)',
         fill:'both'
       }
@@ -28220,12 +29006,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!uiReducedMotion() && typeof pop.animate==='function'){
       pop.animate(
         [
-          {opacity:0,transform:'translateY(-5px) scale(.975)'},
-          {opacity:1,transform:'translateY(0) scale(1)'}
+          {transform:'translateY(-10px) scale(.96)'},
+          {transform:'translateY(0) scale(1)'}
         ],
         {
-          duration:210,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:280,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
     }
@@ -28233,9 +29019,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiStaggerIn(
       pop.querySelectorAll('.stripe-role-option'),
       {
-        distance:5,
-        duration:235,
-        step:26
+        distance:8,
+        duration:270,
+        step:24
       }
     );
   }
@@ -29915,43 +30701,279 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
 
-  function addTextureFromFile(file){
-    const entered=prompt('给这个花灰 / 纹理起一个名字：',file.name.replace(/\.[^.]+$/,''));
-    const name=(entered||'').trim();
+  let pendingTextureFile=null;
+  let pendingTexturePreviewUrl='';
+
+  function isSupportedTextureFile(file){
+    if(!(file instanceof Blob))return false;
+    const type=String(file.type||'').toLowerCase();
+    const name=String(file.name||'').toLowerCase();
+    return [
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+      'image/bmp'
+    ].includes(type) || /\.(png|jpe?g|webp|gif|bmp)$/i.test(name);
+  }
+
+  const humanFileSize=bytes=>{
+    const value=Math.max(0,Number(bytes)||0);
+    if(value<1024)return `${value} B`;
+    if(value<1024*1024)return `${(value/1024).toFixed(1)} KB`;
+    return `${(value/1024/1024).toFixed(1)} MB`;
+  };
+
+  function blobToDataUrl(blob){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(String(reader.result||''));
+      reader.onerror=()=>reject(reader.error||new Error('图片读取失败'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function canvasToBlob(canvas,type='image/webp',quality=.9){
+    return new Promise((resolve,reject)=>{
+      canvas.toBlob(
+        blob=>blob?resolve(blob):reject(new Error('图片优化失败')),
+        type,
+        quality
+      );
+    });
+  }
+
+  async function decodeTextureImage(file){
+    if(typeof createImageBitmap==='function'){
+      try{return await createImageBitmap(file);}catch(_){ }
+    }
+
+    const url=URL.createObjectURL(file);
+    try{
+      return await new Promise((resolve,reject)=>{
+        const image=new Image();
+        image.onload=()=>resolve(image);
+        image.onerror=()=>reject(new Error('图片格式无法识别'));
+        image.src=url;
+      });
+    }finally{
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function optimizeTextureFile(file){
+    if(!isSupportedTextureFile(file)){
+      throw new Error('请选择 PNG、JPG、WEBP、GIF 或 BMP 图片');
+    }
+    if(Number(file.size)>24*1024*1024){
+      throw new Error('图片超过 24 MB，请先适当缩小后再导入');
+    }
+
+    const image=await decodeTextureImage(file);
+    const sourceWidth=Math.max(1,Number(image.width)||1);
+    const sourceHeight=Math.max(1,Number(image.height)||1);
+
+    // 小图保持原始像素；大图自动压到足够用于纺织纹理预览的尺寸，
+    // 避免 data URL 撑爆浏览器本地存储而表现成“上传没有反应”。
+    if(
+      Number(file.size)<=900*1024 &&
+      sourceWidth<=1600 &&
+      sourceHeight<=1600
+    ){
+      const dataUrl=await blobToDataUrl(file);
+      image.close?.();
+      return {
+        dataUrl,
+        width:sourceWidth,
+        height:sourceHeight,
+        storedBytes:file.size,
+        optimized:false
+      };
+    }
+
+    const attempts=[
+      {max:1600,quality:.90},
+      {max:1280,quality:.84},
+      {max:960,quality:.78},
+      {max:720,quality:.72}
+    ];
+    let last=null;
+
+    for(const attempt of attempts){
+      const ratio=Math.min(1,attempt.max/Math.max(sourceWidth,sourceHeight));
+      const width=Math.max(1,Math.round(sourceWidth*ratio));
+      const height=Math.max(1,Math.round(sourceHeight*ratio));
+      const canvas=document.createElement('canvas');
+      canvas.width=width;
+      canvas.height=height;
+      const context=canvas.getContext('2d',{alpha:true});
+      if(!context)throw new Error('当前设备无法处理图片');
+      context.imageSmoothingEnabled=true;
+      context.imageSmoothingQuality='high';
+      context.drawImage(image,0,0,width,height);
+      const blob=await canvasToBlob(canvas,'image/webp',attempt.quality);
+      last={
+        dataUrl:await blobToDataUrl(blob),
+        width,
+        height,
+        storedBytes:blob.size,
+        optimized:true
+      };
+      canvas.width=1;
+      canvas.height=1;
+      if(blob.size<=640*1024)break;
+    }
+
+    image.close?.();
+    if(!last?.dataUrl)throw new Error('图片优化失败');
+    return last;
+  }
+
+  function clearPendingTexture(){
+    pendingTextureFile=null;
+    if(pendingTexturePreviewUrl){
+      URL.revokeObjectURL(pendingTexturePreviewUrl);
+      pendingTexturePreviewUrl='';
+    }
+    const input=$('#textureFileInput');
+    if(input)input.value='';
+  }
+
+  async function closeTextureNameDialog(){
+    const backdrop=$('#textureNameDialogBackdrop');
+    const dialog=backdrop?.querySelector('.texture-name-dialog');
+    await uiCloseOverlay({
+      backdrop,
+      surface:dialog,
+      distance:9,
+      duration:205
+    });
+    clearPendingTexture();
+  }
+
+  function openTextureNameDialog(file){
+    if(!isSupportedTextureFile(file)){
+      toast('请选择 PNG、JPG、WEBP、GIF 或 BMP 图片');
+      clearPendingTexture();
+      return false;
+    }
+    if(Number(file.size)>24*1024*1024){
+      toast('图片超过 24 MB，请先适当缩小后再导入');
+      clearPendingTexture();
+      return false;
+    }
+
+    clearPendingTexture();
+    pendingTextureFile=file;
+    pendingTexturePreviewUrl=URL.createObjectURL(file);
+
+    const input=$('#textureNameDialogInput');
+    input.value=String(file.name||'纹理').replace(/\.[^.]+$/,'');
+    $('#textureNameDialogMeta').textContent=
+      `${file.name||'图片'} · ${humanFileSize(file.size)}`;
+    $('#textureNameDialogSwatch').style.backgroundImage=
+      `url("${pendingTexturePreviewUrl}")`;
+
+    const backdrop=$('#textureNameDialogBackdrop');
+    const dialog=backdrop?.querySelector('.texture-name-dialog');
+    uiOpenOverlay({
+      backdrop,
+      surface:dialog,
+      contents:dialog?.querySelectorAll(
+        '.color-name-dialog-head > *,.color-name-dialog-body > *,.color-name-dialog-actions > *'
+      )||[],
+      distance:14,
+      duration:300
+    });
+    setTimeout(()=>input.focus(),120);
+    return true;
+  }
+
+  async function addTextureFromFile(file,suppliedName=''){
+    const name=String(suppliedName||'').trim();
     if(!name){
-      toast('必须先填写纹理名字');
+      openTextureNameDialog(file);
+      return null;
+    }
+
+    const before=captureAppSnapshot();
+    const encoded=await optimizeTextureFile(file);
+    const item={
+      id:nextResourceId('texture'),
+      type:'texture',
+      name,
+      image:encoded.dataUrl,
+      brightness:50,
+      scale:100,
+      sourceWidth:encoded.width,
+      sourceHeight:encoded.height
+    };
+
+    colorLibrary.push(item);
+    if(!saveColorLibrary({reason:'texture-add'})){
+      colorLibrary=before.colorLibrary;
+      renderLibraryTable();
+      throw new Error('本地存储空间不足，纹理没有写入');
+    }
+
+    history.push(before);
+    if(history.length>120)history.shift();
+    future=[];
+    const durableSaved=await saveDurableVaultNow('texture-add',true);
+    if(!durableSaved){
+      colorLibrary=before.colorLibrary;
+      saveColorLibrary({touchAssets:false,reason:'texture-rollback'});
+      renderLibraryTable();
+      throw new Error('保险存档写入失败，纹理没有加入；请检查磁盘空间后重试');
+    }
+    renderLibraryTable();
+    renderPaletteLibrarySearch();
+
+    animatePopIn(
+      $(`.library-resource-row[data-id="${item.id}"]`),
+      {
+        duration:340,
+        distance:11,
+        scale:.955
+      }
+    );
+
+    toast(
+      encoded.optimized
+        ? `已优化并加入纹理：${name}`
+        : `已加入纹理：${name}`
+    );
+    return item;
+  }
+
+  async function confirmTextureToLibrary(){
+    if(!pendingTextureFile)return;
+    const name=($('#textureNameDialogInput').value||'').trim();
+    if(!name){
+      toast('请填写纹理名字');
+      appleCommitControl($('#textureNameDialogInput'));
       return;
     }
 
-    const rd=new FileReader();
-    rd.onload=()=>{
-      pushHistory();
-      const item={
-        id:nextResourceId('texture'),
-        type:'texture',
-        name,
-        image:rd.result,
-        brightness:50,
-        scale:100
-      };
-      colorLibrary.push(item);
-      saveColorLibrary();
-      renderLibraryTable();renderPaletteLibrarySearch();
+    const button=$('#textureNameDialogConfirm');
+    const file=pendingTextureFile;
+    button.disabled=true;
+    button.textContent='正在优化图片…';
+    $('#textureNameDialogMeta').textContent=
+      '正在压缩到适合长期保存的大小，请稍候';
 
-      requestAnimationFrame(()=>{
-        animatePopIn(
-          $(`.library-resource-row[data-id="${item.id}"]`),
-          {
-            duration:330,
-            distance:8,
-            scale:.96
-          }
-        );
-      });
-
-      toast(`已加入纹理：${name}`);
-    };
-    rd.readAsDataURL(file);
+    try{
+      await addTextureFromFile(file,name);
+      await closeTextureNameDialog();
+    }catch(error){
+      console.error(error);
+      toast(error?.message||'纹理导入失败');
+      $('#textureNameDialogMeta').textContent=
+        error?.message||'纹理导入失败，请换一张图片重试';
+    }finally{
+      button.disabled=false;
+      button.textContent='优化图片并加入色库';
+    }
   }
 
   function cleanImportedAssetColors(value){
@@ -31354,15 +32376,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const animation=panel.animate(
       placement==='top'
         ? [
-            {transform:'translateY(4px) scale(.982)'},
+            {transform:'translateY(10px) scale(.97)'},
             {transform:'translateY(0) scale(1)'}
           ]
         : [
-            {transform:'translateY(-4px) scale(.982)'},
+            {transform:'translateY(-10px) scale(.97)'},
             {transform:'translateY(0) scale(1)'}
           ],
       {
-        duration:190,
+        duration:280,
         easing:'cubic-bezier(.2,.8,.2,1)',
         fill:'none'
       }
@@ -31383,9 +32405,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiStaggerIn(
       panel.querySelectorAll(':scope > *'),
       {
-        distance:3,
-        duration:190,
-        step:14
+        distance:8,
+        duration:260,
+        step:20
       }
     );
   }
@@ -31399,8 +32421,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     stripeToolPanelMotion.delete(panel);
 
     const towardAnchor=panel.classList.contains('popover-top')
-      ? 'translateY(3px) scale(.988)'
-      : 'translateY(-3px) scale(.988)';
+      ? 'translateY(7px) scale(.978)'
+      : 'translateY(-7px) scale(.978)';
 
     panel.dataset.motionPhase='closing';
     panel.classList.add('ui-overlay-closing');
@@ -32565,6 +33587,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function renderSvg(){
+    const previousPatternVisual=
+      capturePatternVisualState();
+
     const favoritePreview=
       schemePreviewFavoriteEntry;
 
@@ -32650,6 +33675,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     renderRoleUsageBar(
       favoritePreview || null
+    );
+
+    animatePatternVisualState(
+      previousPatternVisual,
+      {
+        duration:
+          pendingInterfaceMotionKind==='scheme' ||
+          pendingInterfaceMotionKind==='project' ||
+          pendingInterfaceMotionKind==='history'
+            ? 420
+            : 330
+      }
     );
 
     updateSchemePreviewControls();
@@ -35360,12 +36397,53 @@ ${sheets.join('\n')}
   $('#backToDesignBtn').onclick=showDesignPage;
   $('#librarySearch').oninput=renderLibraryTable;
   $('#addLibraryColorBtn').onclick=()=>addLibraryColor();
-  $('#addTextureBtn').onclick=()=>$('#textureFileInput').click();
-  $('#textureFileInput').onchange=e=>{
-    const f=e.target.files[0];
-    if(f)addTextureFromFile(f);
-    e.target.value='';
+  const textureUploadButton=$('#addTextureBtn');
+  const textureUploadInput=$('#textureFileInput');
+  textureUploadButton.onclick=()=>{
+    textureUploadInput.value='';
+    textureUploadInput.click();
   };
+  textureUploadInput.onchange=e=>{
+    const file=e.target.files?.[0];
+    if(file)openTextureNameDialog(file);
+  };
+  ['dragenter','dragover'].forEach(type=>{
+    textureUploadButton.addEventListener(type,e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      textureUploadButton.classList.add('is-dragover');
+      if(e.dataTransfer)e.dataTransfer.dropEffect='copy';
+    });
+  });
+  textureUploadButton.addEventListener('dragleave',e=>{
+    if(!textureUploadButton.contains(e.relatedTarget)){
+      textureUploadButton.classList.remove('is-dragover');
+    }
+  });
+  textureUploadButton.addEventListener('drop',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    textureUploadButton.classList.remove('is-dragover');
+    const file=[...(e.dataTransfer?.files||[])]
+      .find(isSupportedTextureFile);
+    if(file)openTextureNameDialog(file);
+    else toast('请拖入 PNG、JPG、WEBP、GIF 或 BMP 图片');
+  });
+  $('#textureNameDialogConfirm').onclick=confirmTextureToLibrary;
+  $('#textureNameDialogCancel').onclick=closeTextureNameDialog;
+  $('#textureNameDialogClose').onclick=closeTextureNameDialog;
+  $('#textureNameDialogBackdrop').addEventListener('click',e=>{
+    if(e.target===$('#textureNameDialogBackdrop'))closeTextureNameDialog();
+  });
+  $('#textureNameDialogInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      confirmTextureToLibrary();
+    }else if(e.key==='Escape'){
+      e.preventDefault();
+      closeTextureNameDialog();
+    }
+  });
   $('#exportLibraryBtn').onclick=exportColorLibrary;
   $('#importLibraryBtn').onclick=()=>$('#libraryFileInput').click();
   $('#libraryFileInput').onchange=e=>{
@@ -38022,6 +39100,7 @@ $('#addStripeBtn').onclick=()=>{
 
   async function initializeStripeStudio(){
     purgePointerSortArtifacts();
+    installUniversalAppleMotion();
     await bootstrapDurableVault();
     applyRandomStripeSettingsToUI();
     loadLocal();
