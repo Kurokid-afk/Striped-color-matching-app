@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync=promisify(execFile);
 const [sourceHtml]=process.argv.slice(2);
@@ -163,15 +165,13 @@ await fs.writeFile(
   "utf8"
 );
 
-const edge="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const {stdout,stderr}=await execFileAsync(edge,[
-  "--headless=new",
-  "--disable-gpu",
-  "--disable-extensions",
-  "--allow-file-access-from-files",
-  "--virtual-time-budget=14000",
-  "--dump-dom",
-  testHtmlPath.pathname.slice(1)
+const electron=path.resolve('node_modules/electron/dist/electron.exe');
+const electronRunner=path.resolve('work/electron_dump_dom.cjs');
+const {stdout,stderr}=await execFileAsync(electron,[
+  electronRunner,
+  fileURLToPath(testHtmlPath),
+  '__CODEX_OVERLAY_MOTION_RESULT__',
+  '20000'
 ],{maxBuffer:24*1024*1024,windowsHide:true});
 
 const marker="__CODEX_OVERLAY_MOTION_RESULT__";

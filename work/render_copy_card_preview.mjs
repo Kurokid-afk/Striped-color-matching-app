@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync=promisify(execFile);
 const [sourceHtml,outputPng]=process.argv.slice(2);
@@ -48,17 +50,15 @@ await fs.writeFile(
   "utf8"
 );
 
-const edge="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-await execFileAsync(edge,[
-  "--headless=new",
-  "--disable-gpu",
-  "--disable-extensions",
-  "--allow-file-access-from-files",
-  "--hide-scrollbars",
-  "--force-device-scale-factor=1",
-  "--window-size=1800,1445",
-  `--screenshot=${outputPng}`,
-  previewHtmlPath.pathname.slice(1)
+const electron=path.resolve("node_modules/electron/dist/electron.exe");
+const screenshotRunner=path.resolve("work/electron_screenshot.cjs");
+const resolvedOutput=path.resolve(outputPng);
+await execFileAsync(electron,[
+  screenshotRunner,
+  fileURLToPath(previewHtmlPath),
+  resolvedOutput,
+  "1800",
+  "1445"
 ],{windowsHide:true,maxBuffer:8*1024*1024});
 
-console.log(outputPng);
+console.log(resolvedOutput);

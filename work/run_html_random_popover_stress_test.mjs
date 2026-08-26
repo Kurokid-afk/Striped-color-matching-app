@@ -117,10 +117,10 @@ await fs.writeFile(
   'utf8'
 );
 
-const edge='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const {stdout,stderr}=await execFileAsync(edge,[
-  '--headless=new','--disable-gpu','--disable-extensions','--allow-file-access-from-files',
-  '--virtual-time-budget=45000','--dump-dom',testPath
+const electron=path.resolve('node_modules/electron/dist/electron.exe');
+const electronRunner=path.resolve('work/electron_dump_dom.cjs');
+const {stdout,stderr}=await execFileAsync(electron,[
+  electronRunner,testPath,'__RANDOM_POPOVER_STRESS__','50000'
 ],{maxBuffer:30*1024*1024,windowsHide:true});
 
 const marker='__RANDOM_POPOVER_STRESS__';

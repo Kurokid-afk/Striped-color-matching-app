@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
 const [sourceHtml] = process.argv.slice(2);
@@ -62,6 +64,17 @@ window.addEventListener('load', async () => {
     const sidebarAnimations=$('.sidebar')?.getAnimations({subtree:true}).length||0;
     const rightAnimations=$('.rightbar')?.getAnimations({subtree:true}).length||0;
     const canvasAnimations=$('.canvas-card')?.getAnimations({subtree:true}).length||0;
+    const activeMotionFrames=[
+      ...($('.sidebar')?.getAnimations({subtree:true})||[]),
+      ...($('.rightbar')?.getAnimations({subtree:true})||[]),
+      ...($('.canvas-card')?.getAnimations({subtree:true})||[])
+    ].flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const hasScaleOvershoot=activeMotionFrames.some(frame=>{
+      const matches=[...String(frame.transform||'').matchAll(/scale\(([-0-9.]+)\)/g)];
+      return matches.some(match=>Number(match[1])>1.0001);
+    });
+    const surfaceSwapUsesCurtain=curtainSwap.toString().includes('createMotionCurtain');
+    const surfaceSwapUsesOpacity=/opacity\s*:/.test(curtainSwap.toString());
     const hasWave=!!$('.interface-motion-wave');
 
     applyMapping({A:'#C79A62',B:'#B56F74'});
@@ -102,12 +115,16 @@ window.addEventListener('load', async () => {
       sidebarAnimations,
       rightAnimations,
       canvasAnimations,
+      hasScaleOvershoot,
+      surfaceSwapUsesCurtain,
+      surfaceSwapUsesOpacity,
       hasWave,
       horizontalGap,
       verticalGap,
       exportCells:cells.length,
       hasCardBorder:exportData.svg.includes('stroke="#C7CDD0"'),
       hasCardShadow:exportData.svg.includes('filter="url(#copyDisplayCardShadow)"'),
+      cardCaptionCount:(exportData.svg.match(/data-export-card-caption=/g)||[]).length,
       runtimeErrors
     };
 
@@ -133,15 +150,13 @@ await fs.writeFile(
   "utf8",
 );
 
-const edge = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const { stdout, stderr } = await execFileAsync(edge, [
-  "--headless=new",
-  "--disable-gpu",
-  "--disable-extensions",
-  "--allow-file-access-from-files",
-  "--virtual-time-budget=12000",
-  "--dump-dom",
-  testHtmlPath.pathname.slice(1),
+const electron = path.resolve("node_modules/electron/dist/electron.exe");
+const electronRunner = path.resolve("work/electron_dump_dom.cjs");
+const { stdout, stderr } = await execFileAsync(electron, [
+  electronRunner,
+  fileURLToPath(testHtmlPath),
+  "__CODEX_MOTION_SORT_RESULT__",
+  "20000",
 ], { maxBuffer: 24 * 1024 * 1024, windowsHide: true });
 
 const marker = "__CODEX_MOTION_SORT_RESULT__";
@@ -168,12 +183,16 @@ if (
   result.sidebarAnimations < 1 ||
   result.rightAnimations < 1 ||
   result.canvasAnimations < 1 ||
+  result.hasScaleOvershoot ||
+  result.surfaceSwapUsesCurtain ||
+  result.surfaceSwapUsesOpacity ||
   result.hasWave ||
   result.horizontalGap !== 12 ||
-  result.verticalGap !== 28 ||
+  result.verticalGap !== 38 ||
   result.exportCells !== 4 ||
-  !result.hasCardBorder ||
+  result.hasCardBorder ||
   !result.hasCardShadow ||
+  result.cardCaptionCount !== 4 ||
   (result.runtimeErrors||[]).length
 ) {
   throw new Error(`Unexpected result: ${JSON.stringify(result)}`);

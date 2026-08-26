@@ -18367,6 +18367,220 @@
   }
   .saved-palette-option-delete:hover{background:#f5eaea;transform:scale(1.04)}
 
+  /* ========================================================
+     Apple-style Motion Pass
+     连续位移、克制缩放、快速收束；不使用果冻回弹或整面发白。
+     ======================================================== */
+  :root{
+    --apple-ease:cubic-bezier(.2,.8,.2,1);
+    --apple-ease-standard:cubic-bezier(.25,.1,.25,1);
+    --apple-micro:140ms;
+    --apple-control:200ms;
+    --apple-layout:320ms;
+    --motion-ease:var(--apple-ease);
+    --motion-ease-out:var(--apple-ease);
+    --motion-ease-soft:var(--apple-ease);
+    --motion-standard:var(--apple-ease-standard);
+    --motion-micro:var(--apple-micro);
+    --motion-fast:var(--apple-control);
+    --motion-normal:280ms;
+    --motion-local:var(--apple-layout);
+    --motion-canvas:360ms;
+    --motion-page:420ms;
+  }
+
+  /* 旧版遮幕和扫光是“白一下”的来源，空间切换由 JS 的不透明推移接管。 */
+  .motion-curtain,
+  .motion-transition-veil,
+  .canvas-wrap .interface-motion-wave{
+    display:none!important;
+  }
+
+  .page-view.page-transitioning,
+  .canvas-view.canvas-transitioning{
+    opacity:1!important;
+    filter:none!important;
+    backface-visibility:hidden!important;
+    will-change:transform,box-shadow!important;
+  }
+
+  .btn,
+  button,
+  input,
+  select,
+  .stripe-freeze-btn,
+  .library-entry-btn,
+  .stripe-tertiary-btn,
+  .saved-palette-trigger,
+  .saved-palette-option,
+  .saved-palette-option-delete{
+    transition:
+      transform var(--apple-micro) var(--apple-ease),
+      background-color var(--apple-control) ease,
+      border-color var(--apple-control) ease,
+      color var(--apple-control) ease,
+      box-shadow var(--apple-control) var(--apple-ease)!important;
+  }
+
+  .btn:hover:not(:disabled),
+  button:hover:not(:disabled){
+    transform:translateY(-1px)!important;
+  }
+
+  .btn:active:not(:disabled),
+  button:active:not(:disabled){
+    transform:translateY(0) scale(.975)!important;
+    transition-duration:90ms!important;
+  }
+
+  .stripe-item,
+  .role-item,
+  .scheme,
+  .favorite-tile,
+  .swatch,
+  .library-resource-row,
+  .library-search-item,
+  .stripe-template-row{
+    transition:
+      transform var(--apple-control) var(--apple-ease),
+      background-color var(--apple-control) ease,
+      border-color var(--apple-control) ease,
+      box-shadow var(--apple-control) var(--apple-ease)!important;
+  }
+
+  .scheme:hover,
+  .favorite-tile:hover,
+  .library-search-item:hover,
+  .swatch:hover{
+    transform:translateY(-1px)!important;
+  }
+
+  .color-chip:hover,
+  .stripe-drag-grip:hover,
+  .palette-drag-grip:hover,
+  .library-drag-grip:hover,
+  .favorite-order-handle:hover,
+  .stripe-role-picker:hover .stripe-role-picker-swatch,
+  .swatch:hover .swatch-color,
+  .item-delete-x:hover:not(:disabled),
+  #paletteGrid .palette-remove-btn:hover:not(:disabled){
+    transform:none!important;
+  }
+
+  .palette-grid.role-replace-picking .swatch:hover{
+    transform:translateY(-1px)!important;
+  }
+
+  .role-item.role-replace-target .role-fill-preview,
+  .stripe-select:checked{
+    transform:scale(1)!important;
+  }
+
+  .image-dropzone.is-dragover,
+  .excel-counter-drop.is-dragover{
+    transform:scale(.995)!important;
+  }
+
+  .sort-soft-land,
+  .favorite-tile.favorite-land{
+    animation:appleSoftSettle 220ms var(--apple-ease)!important;
+  }
+
+  @keyframes appleSoftSettle{
+    from{transform:scale(.985)}
+    to{transform:scale(1)}
+  }
+
+  .stripe-freeze-btn.lock-just-closed .ui-lock-body,
+  .stripe-freeze-btn.lock-just-closed,
+  .stripe-freeze-btn.lock-just-opened .ui-lock-body,
+  .stripe-freeze-btn.lock-just-opened{
+    animation:appleLockSettle 190ms var(--apple-ease)!important;
+  }
+
+  @keyframes appleLockSettle{
+    from{transform:scale(.94)}
+    to{transform:scale(1)}
+  }
+
+  .undo-attention{
+    animation:appleAttention 360ms var(--apple-ease) both!important;
+  }
+
+  @keyframes appleAttention{
+    from{box-shadow:0 0 0 4px rgba(65,75,78,.11);transform:scale(.985)}
+    to{box-shadow:0 0 0 0 rgba(65,75,78,0);transform:scale(1)}
+  }
+
+  .excel-counter-progress span.active i::after{
+    animation:none!important;
+    opacity:.32!important;
+    transform:scale(1)!important;
+  }
+
+  .role-usage-segment{
+    transition:
+      width 360ms var(--apple-ease),
+      flex-basis 360ms var(--apple-ease),
+      background-color 240ms ease!important;
+  }
+
+  #copyCanvasImageBtn.copy-done{
+    animation:appleCopyConfirm 220ms var(--apple-ease)!important;
+  }
+
+  @keyframes appleCopyConfirm{
+    from{transform:scale(.965)}
+    to{transform:scale(1)}
+  }
+
+  /* 浮层自身不从透明白块淡入；靠裁切和位移展开，阴影同步自然加深。 */
+  .library-search-results,
+  #paletteLibraryResults.library-search-results{
+    opacity:1!important;
+    transform-origin:top center!important;
+    transition:
+      clip-path 220ms var(--apple-ease),
+      transform 220ms var(--apple-ease),
+      box-shadow 220ms var(--apple-ease),
+      visibility 0s linear 220ms!important;
+  }
+
+  .library-search-results:not(.show),
+  #paletteLibraryResults.library-search-results:not(.show){
+    opacity:1!important;
+    clip-path:inset(0 0 100% 0 round 10px)!important;
+    transform:translateY(-5px) scale(.99)!important;
+  }
+
+  .library-search-results.show,
+  #paletteLibraryResults.library-search-results.show{
+    opacity:1!important;
+    clip-path:inset(0 round 10px)!important;
+    transform:translateY(0) scale(1)!important;
+    transition-delay:0s!important;
+  }
+
+  /* 用户指定保留：选中条纹仍由 pulsePatternRects 原样高亮两次。 */
+
+  @media (prefers-reduced-motion:reduce){
+    .page-view,
+    .canvas-view,
+    .btn,
+    button,
+    input,
+    select,
+    .stripe-item,
+    .role-item,
+    .scheme,
+    .favorite-tile,
+    .swatch,
+    .library-resource-row,
+    .library-search-results{
+      transition:none!important;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -22918,13 +23132,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         const anim=el.animate(
           [
-            {transform:`translate(${dx}px, ${dy}px) scale(.985)`,offset:0},
-            {transform:`translate(${dx*.12}px, ${dy*.12}px) scale(1.006)`,offset:.76},
+            {transform:`translate(${dx}px, ${dy}px) scale(.99)`,offset:0},
             {transform:'translate(0px, 0px) scale(1)',offset:1}
           ],
           {
-            duration:365,
-            easing:'cubic-bezier(.18,.82,.2,1)',
+            duration:320,
+            easing:'cubic-bezier(.2,.8,.2,1)',
             fill:'both'
           }
         );
@@ -23406,8 +23619,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!el || uiReducedMotion() || typeof el.animate!=='function')return Promise.resolve();
 
     const anim=el.animate(keyframes,{
-      duration:options.duration ?? 300,
-      easing:options.easing ?? 'cubic-bezier(.22,1,.36,1)',
+      duration:options.duration ?? 260,
+      easing:options.easing ?? 'cubic-bezier(.2,.8,.2,1)',
       fill:options.fill ?? 'both',
       delay:options.delay ?? 0
     });
@@ -23452,8 +23665,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     backdrop,
     surface,
     contents=[],
-    distance=12,
-    duration=300
+    distance=10,
+    duration=260
   }){
     if(!backdrop || !surface)return Promise.resolve();
 
@@ -23489,25 +23702,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       surface.animate(
         [
           {
-            opacity:.18,
-            transform:`translateY(${distance}px) scale(.965)`,
-            filter:'blur(2px)'
-          },
-          {
             opacity:1,
-            transform:'translateY(-1px) scale(1.006)',
-            filter:'blur(0)',
-            offset:.78
+            transform:`translateY(${distance}px) scale(.985)`,
+            boxShadow:'0 4px 12px rgba(31,38,40,.06)'
           },
           {
             opacity:1,
             transform:'translateY(0) scale(1)',
-            filter:'blur(0)'
+            boxShadow:'0 16px 40px rgba(31,38,40,.16)'
           }
         ],
         {
           duration,
-          easing:'cubic-bezier(.16,1,.3,1)',
+          easing:'cubic-bezier(.2,.8,.2,1)',
           fill:'both'
         }
       )
@@ -23517,13 +23724,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       animations.push(
         el.animate(
           [
-            {opacity:0,transform:'translateY(7px)'},
-            {opacity:1,transform:'translateY(0)'}
+            {transform:'translateY(5px)'},
+            {transform:'translateY(0)'}
           ],
           {
             duration:Math.max(210,duration-25),
             delay:55+Math.min(index*34,170),
-            easing:'cubic-bezier(.16,1,.3,1)',
+            easing:'cubic-bezier(.2,.8,.2,1)',
             fill:'both'
           }
         )
@@ -23540,8 +23747,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   async function uiCloseOverlay({
     backdrop,
     surface,
-    distance=8,
-    duration=205,
+    distance=7,
+    duration=190,
     hide=true
   }){
     if(!backdrop || !surface)return;
@@ -23559,14 +23766,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           [
             {opacity:1,transform:'translateY(0) scale(1)'},
             {
-              opacity:0,
-              transform:`translateY(${distance}px) scale(.976)`,
-              filter:'blur(1px)'
+              opacity:1,
+              transform:`translateY(${distance}px) scale(.985)`,
+              boxShadow:'0 4px 12px rgba(31,38,40,.05)'
             }
           ],
           {
             duration,
-            easing:'cubic-bezier(.4,0,.7,.2)',
+            easing:'cubic-bezier(.4,0,.2,1)',
             fill:'both'
           }
         )
@@ -23627,18 +23834,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const anim=el.animate(
         [
           {transform:translate},
-          {
-            transform:axis==='x'
-              ? 'translateX(-1px)'
-              : 'translateY(-1px)',
-            offset:.72
-          },
           {transform:'translate(0,0)'}
         ],
         {
           duration,
           delay:Math.min(i*step,200),
-          easing:'cubic-bezier(.18,.78,.18,1)'
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
 
@@ -23687,10 +23888,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiAnimate(
       el,
       [
-        {opacity:.74,transform:'translateY(8px)'},
-        {opacity:1,transform:'translateY(0)'}
+        {transform:'translateY(7px) scale(.99)'},
+        {transform:'translateY(0) scale(1)'}
       ],
-      {duration:285,easing:'cubic-bezier(.18,.78,.18,1)'}
+      {duration:250,easing:'cubic-bezier(.2,.8,.2,1)'}
     );
   }
 
@@ -23817,14 +24018,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
 
   const MOTION=Object.freeze({
-    micro:160,
-    fast:220,
-    delete:285,
-    local:320,
-    canvas:500,
-    page:560,
-    easeOut:'cubic-bezier(.16,1,.3,1)',
-    easeStandard:'cubic-bezier(.4,0,.2,1)'
+    micro:140,
+    fast:200,
+    delete:250,
+    local:280,
+    canvas:360,
+    page:420,
+    easeOut:'cubic-bezier(.2,.8,.2,1)',
+    easeStandard:'cubic-bezier(.25,.1,.25,1)'
   });
 
   let currentAppPage='design';
@@ -24060,8 +24261,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     outgoing,
     commit,
     onReveal,
-    inDuration=170,
-    outDuration=220
+    inDuration=300,
+    outDuration=300
   }){
     if(!container || !incoming || !outgoing){
       const commitResult=commit?.();
@@ -24071,64 +24272,78 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return;
     }
 
-    const curtain=createMotionCurtain(container,incoming);
-
-    if(typeof curtain.animate!=='function'){
+    if(
+      uiReducedMotion() ||
+      typeof incoming.animate!=='function' ||
+      typeof outgoing.animate!=='function'
+    ){
       const commitResult=commit?.();
       if(commitResult && typeof commitResult.then==='function')await commitResult;
       const side=onReveal?.();
       if(side && typeof side.then==='function')await side;
-      curtain.remove();
       return;
     }
-
-    const cover=curtain.animate(
-      [
-        {opacity:0},
-        {opacity:1}
-      ],
-      {
-        duration:inDuration,
-        easing:'cubic-bezier(.4,0,.2,1)',
-        fill:'forwards'
-      }
-    );
-
-    await cover.finished.catch(()=>{});
 
     const commitResult=commit?.();
     if(commitResult && typeof commitResult.then==='function'){
       await commitResult;
     }
 
-    await nextUiFrame();
-    await nextUiFrame();
+    const pageMotion=incoming.classList.contains('page-view');
+    const motionClass=pageMotion?'page':'canvas';
+    const distance=pageMotion?30:18;
+    const direction=outgoing.classList.contains(`${motionClass}-left`)?-1:1;
+    const duration=Math.max(inDuration,outDuration,pageMotion?MOTION.page:MOTION.canvas);
 
-    try{cover.cancel();}catch(_){}
-    curtain.style.opacity='1';
+    incoming.classList.add(`${motionClass}-transitioning`,`${motionClass}-entering`);
+    outgoing.classList.add(`${motionClass}-transitioning`,`${motionClass}-leaving`);
 
-    const reveal=curtain.animate(
+    // 苹果式的连续层级位移：新层从手势方向滑入，旧层同步退开。
+    // 两层始终保持不透明，不再用白色遮罩覆盖画面，因此没有“刷新一下”的闪帧。
+    const incomingMotion=incoming.animate(
       [
-        {opacity:1},
-        {opacity:.68,offset:.35},
-        {opacity:0}
+        {
+          transform:`translate3d(${-direction*distance}px,0,0)`,
+          boxShadow:pageMotion
+            ? `${direction*10}px 0 24px rgba(31,38,40,.10)`
+            : '0 6px 16px rgba(31,38,40,.06)'
+        },
+        {
+          transform:'translate3d(0,0,0)',
+          boxShadow:'0 0 0 rgba(31,38,40,0)'
+        }
       ],
       {
-        duration:outDuration,
-        easing:'cubic-bezier(.16,1,.3,1)',
-        fill:'forwards'
+        duration,
+        easing:MOTION.easeOut,
+        fill:'both'
+      }
+    );
+
+    const outgoingMotion=outgoing.animate(
+      [
+        {transform:'translate3d(0,0,0)'},
+        {transform:`translate3d(${direction*distance*.42}px,0,0)`}
+      ],
+      {
+        duration,
+        easing:MOTION.easeOut,
+        fill:'both'
       }
     );
 
     const side=onReveal?.();
 
     await Promise.all([
-      reveal.finished.catch(()=>{}),
+      incomingMotion.finished.catch(()=>{}),
+      outgoingMotion.finished.catch(()=>{}),
       side && typeof side.then==='function' ? side : Promise.resolve()
     ]);
 
-    try{reveal.cancel();}catch(_){}
-    curtain.remove();
+    try{incomingMotion.cancel();}catch(_){}
+    try{outgoingMotion.cancel();}catch(_){}
+    incoming.classList.remove(`${motionClass}-transitioning`,`${motionClass}-entering`);
+    outgoing.classList.remove(`${motionClass}-transitioning`,`${motionClass}-leaving`);
   }
 
   function animateDeleteAway(elements,{
@@ -24589,19 +24804,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     button.animate(
       success
         ? [
-            {transform:'translateY(0) scale(1)',filter:'brightness(1)'},
-            {transform:'translateY(-2px) scale(1.045)',filter:'brightness(1.08)',offset:.45},
+            {transform:'translateY(1px) scale(.97)',filter:'brightness(.98)'},
             {transform:'translateY(0) scale(1)',filter:'brightness(1)'}
           ]
         : [
-            {transform:'translateX(0)'},
-            {transform:'translateX(-3px)'},
-            {transform:'translateX(3px)'},
+            {transform:'translateX(-2px)'},
             {transform:'translateX(0)'}
           ],
       {
-        duration:success?360:260,
-        easing:'cubic-bezier(.16,1,.3,1)'
+        duration:success?240:190,
+        easing:'cubic-bezier(.2,.8,.2,1)'
       }
     );
 
@@ -26534,27 +26746,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       control,
       added
         ? [
-            {transform:'scale(.76) rotate(-9deg)',opacity:.58},
-            {transform:'scale(1.18) rotate(4deg)',opacity:1,offset:.58},
+            {transform:'scale(.88) rotate(-4deg)',opacity:.76},
             {transform:'scale(1) rotate(0)',opacity:1}
           ]
         : [
             {transform:'scale(1) rotate(0)',opacity:1},
-            {transform:'scale(.78) rotate(8deg)',opacity:.52,offset:.48},
-            {transform:'scale(1) rotate(0)',opacity:1}
+            {transform:'scale(.88) rotate(4deg)',opacity:.72}
           ],
-      {duration:330,easing:'cubic-bezier(.16,1,.3,1)'}
+      {duration:220,easing:'cubic-bezier(.2,.8,.2,1)'}
     );
 
     const card=control.closest('.scheme,.canvas-card');
     uiAnimate(
       card,
       [
-        {boxShadow:'0 0 0 0 rgba(230,161,49,0)',transform:'scale(.995)'},
-        {boxShadow:'0 0 0 5px rgba(230,161,49,.13)',transform:'scale(1.006)',offset:.56},
+        {boxShadow:'0 0 0 4px rgba(230,161,49,.12)',transform:'scale(.996)'},
         {boxShadow:'0 0 0 0 rgba(230,161,49,0)',transform:'scale(1)'}
       ],
-      {duration:360}
+      {duration:280}
     );
   }
 
@@ -26562,12 +26771,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiAnimate(
       control,
       [
-        {transform:'translateX(0) scale(1)'},
-        {transform:'translateX(-3px) scale(.98)',offset:.24},
-        {transform:'translateX(3px) scale(1.02)',offset:.52},
+        {transform:'translateX(-2px) scale(.985)'},
         {transform:'translateX(0) scale(1)'}
       ],
-      {duration:260,easing:'cubic-bezier(.16,1,.3,1)'}
+      {duration:190,easing:'cubic-bezier(.2,.8,.2,1)'}
     );
   }
 
@@ -26578,11 +26785,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiAnimate(
       chip,
       [
-        {opacity:.58,transform:`translateY(${afterCount>beforeCount?3:-3}px) scale(.9)`},
-        {opacity:1,transform:'translateY(0) scale(1.08)',offset:.62},
+        {opacity:.78,transform:`translateY(${afterCount>beforeCount?3:-3}px) scale(.94)`},
         {opacity:1,transform:'translateY(0) scale(1)'}
       ],
-      {duration:320}
+      {duration:230}
     );
   }
 
@@ -26995,10 +27201,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           el,
           [
             {transform:from},
-            {transform:'translate(0,0) scale(1.002)',offset:.68},
             {transform:'translate(0,0) scale(1)'}
           ],
-          {duration:300,delay,easing:'cubic-bezier(.16,1,.3,1)'}
+          {duration:280,delay,easing:'cubic-bezier(.2,.8,.2,1)'}
         );
       });
 
@@ -27030,20 +27235,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         row,
         [
           {transform:'translateX(-7px)'},
-          {transform:'translateX(1px)',offset:.72},
           {transform:'translateX(0)'}
         ],
-        {duration:schemeMotion?390:300,delay}
+        {duration:schemeMotion?340:270,delay}
       );
 
       uiAnimate(
         swatch,
         [
-          {transform:'scale(.72)',filter:'saturate(.68)'},
-          {transform:'scale(1.12)',filter:'saturate(1.08)',offset:.62},
+          {transform:'scale(.86)',filter:'saturate(.82)'},
           {transform:'scale(1)',filter:'saturate(1)'}
         ],
-        {duration:schemeMotion?410:310,delay:delay+18}
+        {duration:schemeMotion?320:250,delay:delay+18}
       );
     });
 
@@ -27058,20 +27261,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         card,
         [
           {transform:'translateX(8px)'},
-          {transform:'translateX(-1px)',offset:.72},
           {transform:'translateX(0)'}
         ],
-        {duration:schemeMotion?420:310,delay}
+        {duration:schemeMotion?340:270,delay}
       );
 
       uiAnimate(
         preview,
         [
-          {transform:'scale(.74)',boxShadow:'0 0 0 0 rgba(89,103,232,0)'},
-          {transform:'scale(1.12)',boxShadow:'0 0 0 5px rgba(89,103,232,.14)',offset:.62},
+          {transform:'scale(.86)',boxShadow:'0 0 0 4px rgba(89,103,232,.11)'},
           {transform:'scale(1)',boxShadow:'0 0 0 0 rgba(89,103,232,0)'}
         ],
-        {duration:schemeMotion?430:320,delay:delay+16}
+        {duration:schemeMotion?330:260,delay:delay+16}
       );
 
       // 占比条由 renderRoleUsageBar 自己从旧宽度连续伸缩到新宽度，
@@ -27092,10 +27293,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         $('#schemes'),
         [
           {transform:'translateY(5px)'},
-          {transform:'translateY(-1px)',offset:.72},
           {transform:'translateY(0)'}
         ],
-        {duration:330}
+        {duration:280}
       );
     }
 
@@ -27106,10 +27306,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           el,
           [
             {transform:'translateY(3px)'},
-            {transform:'translateY(-1px)',offset:.7},
             {transform:'translateY(0)'}
           ],
-          {duration:250,delay:index*28}
+          {duration:220,delay:index*28}
         ));
     }
 
@@ -27118,10 +27317,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         $('#projectName'),
         [
           {transform:'translateY(-2px)'},
-          {transform:'translateY(1px)',offset:.7},
           {transform:'translateY(0)'}
         ],
-        {duration:240}
+        {duration:210}
       );
     }
   }
@@ -27155,30 +27353,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
 
   function animatePopIn(el,{
-    duration=320,
-    distance=8,
-    scale=.92
+    duration=260,
+    distance=7,
+    scale=.97
   }={}){
     if(!el || typeof el.animate!=='function')return Promise.resolve();
 
     const anim=el.animate(
       [
         {
-          opacity:0,
+          opacity:.88,
           transform:`translateY(${distance}px) scale(${scale})`
         },
         {
           opacity:1,
-          transform:'translateY(-1px) scale(1.015)',
-          offset:.72
-        },
-        {
           transform:'translateY(0) scale(1)'
         }
       ],
       {
         duration,
-        easing:'cubic-bezier(.16,1,.3,1)'
+        easing:'cubic-bezier(.2,.8,.2,1)'
       }
     );
 
@@ -27187,8 +27381,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function animatePopMany(elements,{
     step=36,
-    duration=320,
-    distance=8
+    duration=260,
+    distance=7
   }={}){
     return Promise.all(
       (elements||[]).filter(Boolean).map((el,i)=>{
@@ -27196,14 +27390,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         const anim=el.animate(
           [
-            {opacity:0,transform:`translateY(${distance}px) scale(.93)`},
-            {opacity:1,transform:'translateY(-1px) scale(1.012)',offset:.72},
+            {opacity:.88,transform:`translateY(${distance}px) scale(.97)`},
             {opacity:1,transform:'translateY(0) scale(1)'}
           ],
           {
             duration,
             delay:i*step,
-            easing:'cubic-bezier(.16,1,.3,1)'
+            easing:'cubic-bezier(.2,.8,.2,1)'
           }
         );
 
@@ -27250,18 +27443,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             transform:`translate(${dx}px,${dy}px)`
           },
           {
-            transform:active
-              ? 'translate(0,0) scale(1.006)'
-              : 'translate(0,0)',
-            offset:.76
-          },
-          {
             transform:'translate(0,0) scale(1)'
           }
         ],
         {
-          duration:active?300:265,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:active?290:255,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
     });
@@ -27276,13 +27463,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       el.animate(
         [
           {
-            transform:'scale(.82)',
+            transform:'scale(.94)',
             transformOrigin:'center'
-          },
-          {
-            transform:'scale(1.025)',
-            transformOrigin:'center',
-            offset:.72
           },
           {
             transform:'scale(1)',
@@ -27290,8 +27472,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
         ],
         {
-          duration:340,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:260,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
     });
@@ -27337,17 +27519,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           transform:'translateY(1.5px) scale(.9975)'
         },
         {
-          transform:'translateY(-.5px) scale(1.0015)',
-          offset:.68
-        },
-        {
           opacity:1,
           transform:'translateY(0) scale(1)'
         }
       ],
       {
         duration,
-        easing:'cubic-bezier(.16,1,.3,1)'
+        easing:'cubic-bezier(.2,.8,.2,1)'
       }
     );
   }
@@ -27365,13 +27543,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     chip.animate(
       [
-        {transform:'scale(.94)',opacity:.72},
-        {transform:'scale(1.045)',opacity:1,offset:.64},
+        {transform:'scale(.94)',opacity:.82},
         {transform:'scale(1)',opacity:1}
       ],
       {
-        duration:220,
-        easing:'cubic-bezier(.16,1,.3,1)'
+        duration:190,
+        easing:'cubic-bezier(.2,.8,.2,1)'
       }
     );
   }
@@ -28643,17 +28820,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                   transform:`translate(${dx}px,${dy}px)`
                 },
                 {
-                  transform:'translate(0,0) scale(1.006)',
-                  offset:.78
-                },
-                {
                   transform:'translate(0,0) scale(1)'
                 }
               ],
               {
-                duration:340,
+                duration:300,
                 delay:Math.min(index*18,90),
-                easing:'cubic-bezier(.16,1,.3,1)'
+                easing:'cubic-bezier(.2,.8,.2,1)'
               }
             );
           }
@@ -28662,10 +28835,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             el,
             [
               {transform:'translateY(7px) scale(.96)'},
-              {transform:'translateY(-1px) scale(1.008)',offset:.72},
               {transform:'translateY(0) scale(1)'}
             ],
-            {duration:300}
+            {duration:260}
           );
         }
       });
@@ -28676,7 +28848,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           header.animate(
             [
               {transform:'translateY(-3px)'},
-              {transform:'translateY(1px)',offset:.72},
               {transform:'translateY(0)'}
             ],
             {
@@ -30142,12 +30313,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       [
         {
           transform:'scale(.985)',
-          opacity:.78
-        },
-        {
-          transform:'scale(1.012)',
-          opacity:1,
-          offset:.68
+          opacity:.88
         },
         {
           transform:'scale(1)',
@@ -30155,8 +30321,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
       ],
       {
-        duration:240,
-        easing:'cubic-bezier(.16,1,.3,1)'
+        duration:210,
+        easing:'cubic-bezier(.2,.8,.2,1)'
       }
     );
 
@@ -30251,13 +30417,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       swatch?.animate(
         [
-          {transform:'scale(.98)'},
-          {transform:'scale(1.025)',offset:.55},
+          {transform:'scale(.96)'},
           {transform:'scale(1)'}
         ],
         {
-          duration:180,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:170,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
 
@@ -30340,12 +30505,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         [
           {
             transform:'scale(.988)',
-            boxShadow:'0 0 0 0 rgba(230,161,49,0)'
-          },
-          {
-            transform:'scale(1.01)',
             boxShadow:'0 0 0 5px rgba(230,161,49,.12)',
-            offset:.58
           },
           {
             transform:'scale(1)',
@@ -30353,8 +30513,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
         ],
         {
-          duration:260,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:230,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
 
@@ -31190,22 +31350,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ? 'left bottom'
       : 'left top';
 
-    // 轻微上浮并短促回弹；不再使用透明度或裁切展开，避免闪白与硬切边。
+    // 单向减速归位；不使用回弹、透明度或裁切闪白。
     const animation=panel.animate(
       placement==='top'
         ? [
             {transform:'translateY(4px) scale(.982)'},
-            {transform:'translateY(-1px) scale(1.004)',offset:.72},
             {transform:'translateY(0) scale(1)'}
           ]
         : [
             {transform:'translateY(-4px) scale(.982)'},
-            {transform:'translateY(1px) scale(1.004)',offset:.72},
             {transform:'translateY(0) scale(1)'}
           ],
       {
-        duration:205,
-        easing:'cubic-bezier(.2,.78,.24,1)',
+        duration:190,
+        easing:'cubic-bezier(.2,.8,.2,1)',
         fill:'none'
       }
     );
@@ -31971,44 +32129,61 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     frozenFills=null,
     index=0
   ){
-    // 单靠白色间距无法区分含大量浅色/白色条纹的相邻方案。
-    // 用很窄的中性内框 + 极淡阴影建立边界，既不遮图案，也不会像粗分隔线一样抢眼。
-    const inset=5;
-    const frameX=x+1;
-    const frameY=y+1;
-    const frameW=Math.max(1,w-2);
-    const frameH=Math.max(1,h-2);
-    const patternW=Math.max(1,w-inset*2);
-    const patternH=Math.max(1,h-inset*2);
+    // 展示图不再给每个方案套灰色描边框。
+    // 只保留极薄的白色装裱边与向下扩散的环境阴影：浅色条纹仍有边界，
+    // 但视觉上更像平放在纸面上的织物样片，而不是一排控件卡片。
+    const inset=3;
+    const surfaceX=x+inset;
+    const surfaceY=y+inset;
+    const surfaceW=Math.max(1,w-inset*2);
+    const surfaceH=Math.max(1,h-inset*2);
+    const clipId=`copyDisplayCardClip_${index}`;
+    const sampleNo=String(index+1).padStart(2,'0');
+    const captionY=surfaceY+surfaceH+19;
 
     return `
       <g
         data-export-card="${index+1}"
         data-card-x="${x}" data-card-y="${y}"
         data-card-width="${w}" data-card-height="${h}">
-        <rect
-          x="${frameX}" y="${frameY}"
-          width="${frameW}" height="${frameH}"
-          rx="8"
-          fill="#F4F5F5"
-          filter="url(#copyDisplayCardShadow)"/>
-        ${nestedPatternSvg(
-          mapping,
-          x+inset,
-          y+inset,
-          patternW,
-          patternH,
-          visual,
-          frozenFills
-        )}
-        <rect
-          x="${frameX}" y="${frameY}"
-          width="${frameW}" height="${frameH}"
-          rx="8"
-          fill="none"
-          stroke="#C7CDD0"
-          stroke-width="2"
-          vector-effect="non-scaling-stroke"/>
+        <defs>
+          <clipPath id="${clipId}">
+            <rect
+              x="${surfaceX}" y="${surfaceY}"
+              width="${surfaceW}" height="${surfaceH}"
+              rx="3"/>
+          </clipPath>
+        </defs>
+        <g filter="url(#copyDisplayCardShadow)">
+          <rect
+            x="${surfaceX}" y="${surfaceY}"
+            width="${surfaceW}" height="${surfaceH}"
+            rx="3"
+            fill="#FFFFFF"/>
+          <g clip-path="url(#${clipId})">
+            ${nestedPatternSvg(
+              mapping,
+              surfaceX,
+              surfaceY,
+              surfaceW,
+              surfaceH,
+              visual,
+              frozenFills
+            )}
+          </g>
+        </g>
+        <g data-export-card-caption="${sampleNo}">
+          <line
+            x1="${surfaceX}" y1="${captionY-4}"
+            x2="${surfaceX+22}" y2="${captionY-4}"
+            stroke="#AEB5B8" stroke-width="1.5"
+            stroke-linecap="round"/>
+          <text
+            x="${surfaceX+30}" y="${captionY}"
+            font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+            font-size="13" font-weight="650"
+            letter-spacing=".08em" fill="#6D767A">方案 ${sampleNo}</text>
+        </g>
       </g>`;
   }
 
@@ -32080,7 +32255,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       // 复制收藏总览时横向保持紧凑，纵向留出略明显但不过宽的呼吸缝。
       // 色条数量再多，相邻两行也不会视觉粘连成同一张图。
       const columnGap=12;
-      const rowGap=28;
+      const rowGap=38;
       const cellW=(contentWidth-columnGap*(cols-1))/cols;
       const cellH=cellW/2;
       const rows=Math.ceil(n/cols);
@@ -32117,12 +32292,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <defs>
         <filter
           id="copyDisplayCardShadow"
-          x="-4%" y="-6%" width="108%" height="114%"
+          x="-5%" y="-7%" width="110%" height="118%"
           color-interpolation-filters="sRGB">
           <feDropShadow
-            dx="0" dy="2" stdDeviation="2"
-            flood-color="#263238"
-            flood-opacity=".13"/>
+            dx="0" dy="2.2" stdDeviation="2.8"
+            flood-color="#1F2933"
+            flood-opacity=".115"/>
         </filter>
       </defs>
       <rect width="100%" height="100%" fill="#ffffff"/>
@@ -33015,17 +33190,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         tile.animate(
           [
-            {transform:'scale(.992)'},
-            {
-              transform:'scale(1.006)',
-              offset:.55
-            },
+            {transform:'scale(.97)'},
             {transform:'scale(1)'}
           ],
           {
-            duration:250,
+            duration:210,
             easing:
-              'cubic-bezier(.16,1,.3,1)'
+              'cubic-bezier(.2,.8,.2,1)'
           }
         );
 
@@ -33745,13 +33916,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         d.animate(
           [
             {
-              transform:
-                'scale(.992)'
-            },
-            {
-              transform:
-                'scale(1.006)',
-              offset:.55
+              transform:'scale(.97)'
             },
             {
               transform:
@@ -33759,9 +33924,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             }
           ],
           {
-            duration:250,
+            duration:210,
             easing:
-              'cubic-bezier(.16,1,.3,1)'
+              'cubic-bezier(.2,.8,.2,1)'
           }
         );
       };
@@ -33829,15 +33994,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           nextCard,
           checked
             ? [
-                {transform:'scale(.985)',boxShadow:'0 0 0 0 rgba(89,103,232,0)'},
-                {transform:'scale(1.008)',boxShadow:'0 0 0 5px rgba(89,103,232,.13)',offset:.58},
+                {transform:'scale(.985)',boxShadow:'0 0 0 5px rgba(89,103,232,.13)'},
                 {transform:'scale(1)',boxShadow:'0 0 0 0 rgba(89,103,232,0)'}
               ]
             : [
                 {opacity:.72,transform:'scale(.992)'},
                 {opacity:1,transform:'scale(1)'}
               ],
-          {duration:330}
+          {duration:250}
         );
       };
 
@@ -36552,12 +36716,11 @@ $('#addStripeBtn').onclick=()=>{
       btn.animate(
         [
           {transform:'scale(.96)'},
-          {transform:'scale(1.05)',offset:.55},
           {transform:'scale(1)'}
         ],
         {
-          duration:330,
-          easing:'cubic-bezier(.16,1,.3,1)'
+          duration:230,
+          easing:'cubic-bezier(.2,.8,.2,1)'
         }
       );
 
@@ -37238,13 +37401,8 @@ $('#addStripeBtn').onclick=()=>{
         swatch.animate(
           [
             {
-              opacity:.5,
+              opacity:.82,
               transform:'scale(.94)'
-            },
-            {
-              opacity:1,
-              transform:'scale(1.035)',
-              offset:.68
             },
             {
               opacity:1,
@@ -37252,8 +37410,8 @@ $('#addStripeBtn').onclick=()=>{
             }
           ],
           {
-            duration:330,
-            easing:'cubic-bezier(.16,1,.3,1)'
+            duration:250,
+            easing:'cubic-bezier(.2,.8,.2,1)'
           }
         );
       }
@@ -37389,12 +37547,7 @@ $('#addStripeBtn').onclick=()=>{
       [
         {
           transform:
-            'scale(.992)'
-        },
-        {
-          transform:
-            'scale(1.012)',
-          offset:.55
+            'scale(.97)'
         },
         {
           transform:
@@ -37402,9 +37555,9 @@ $('#addStripeBtn').onclick=()=>{
         }
       ],
       {
-        duration:300,
+        duration:230,
         easing:
-          'cubic-bezier(.16,1,.3,1)'
+          'cubic-bezier(.2,.8,.2,1)'
       }
     );
   }
