@@ -22975,67 +22975,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     s.settling=true;
 
     const p=s.proxy;
-    const settleDuration=Math.max(300,Math.min(390,duration+105));
+    const settleDuration=Math.max(72,Math.min(118,duration*.42));
 
-    // Real slot is already at the final location because live dragging
-    // moves the source slot itself. Reveal it underneath the proxy so
-    // mouse-up feels like the dragged card is naturally embedding there,
-    // rather than snapping to a corrected position afterwards.
+    // 拖动期间真实空位已经实时处于最终位置。松手只做一次“代理层交接”，
+    // 不允许再从鼠标位置重演一遍移动路径。
+    suppressAppleLayoutMotion(520);
+    document.body.dataset.sortSettleMode='direct-embed';
+
     s.sourceEls.forEach(el=>{
       el.classList.add('sort-settle-reveal');
     });
 
-    const startTransform=
-      `translate3d(${p.x}px,${p.y}px,0) scale(1)`;
+    const finalTransform=
+      `translate3d(${target.left}px,${target.top}px,0) scale(1)`;
 
-    const endTransform=
-      `translate3d(${target.left}px,${target.top}px,0) scale(.992)`;
+    // 代理立即吸附最终槽位；两个关键帧的位置相同，只收掉悬浮阴影。
+    p.x=target.left;
+    p.y=target.top;
+    p.el.style.transform=finalTransform;
 
     const proxyAnim=p.el.animate(
       [
         {
-          transform:startTransform,
+          transform:finalTransform,
           opacity:1,
-          filter:'drop-shadow(0 10px 22px rgba(17,24,39,.14))'
+          filter:'drop-shadow(0 5px 12px rgba(17,24,39,.09))'
         },
         {
-          transform:
-            `translate3d(${p.x+(target.left-p.x)*.76}px,${p.y+(target.top-p.y)*.76}px,0) scale(.996)`,
-          opacity:.94,
-          filter:'drop-shadow(0 5px 12px rgba(17,24,39,.09))',
-          offset:.72
-        },
-        {
-          transform:endTransform,
+          transform:finalTransform,
           opacity:0,
           filter:'drop-shadow(0 1px 2px rgba(17,24,39,0))'
         }
       ],
       {
         duration:settleDuration,
-        easing:'cubic-bezier(.20,.82,.22,1)',
+        easing:'cubic-bezier(.25,.1,.25,1)',
         fill:'forwards'
       }
     );
-
-    const sourceAnimations=s.sourceEls.map((el,index)=>{
-      return el.animate(
-        [
-          {
-            transform:'scale(.994)'
-          },
-          {
-            transform:'scale(1)'
-          }
-        ],
-        {
-          duration:Math.max(185,settleDuration*.58),
-          delay:Math.max(0,settleDuration*.37 + index*8),
-          easing:'cubic-bezier(.16,1,.3,1)',
-          fill:'both'
-        }
-      );
-    });
 
     // 后台标签页或省电模式可能暂停 Web Animation，不能让一次拖动
     // 永远卡在 settling。正常情况下等动画完成；超时则直接提交落位。
@@ -23047,14 +23024,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       finishTimeout
     ]);
 
-    await Promise.all([
-      safeFinished(proxyAnim),
-      ...sourceAnimations.map(safeFinished)
-    ]);
-
-    sourceAnimations.forEach(a=>{
-      try{a.cancel();}catch(_){}
-    });
+    await safeFinished(proxyAnim);
   }
 
 
@@ -23313,6 +23283,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!sourceEls.length)return false;
 
     if(!beginUiOperation('drag'))return false;
+    suppressAppleLayoutMotion(2400);
 
     const parent=config.parent||sourceEls[0].parentElement;
     const type=config.type||'list';
@@ -23941,7 +23912,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
 
-  const uiReducedMotion=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  // 操作反馈承担状态确认，用户明确要求应用内动作始终有动画。
+  // 不让 Windows 的全局动画开关把本软件的切页和反馈全部关闭。
+  const uiReducedMotion=()=>false;
 
   function uiAnimate(el,keyframes,options={}){
     if(!el || uiReducedMotion() || typeof el.animate!=='function')return Promise.resolve();
@@ -23968,6 +23941,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const appleControlMotion=new WeakMap();
   let appleLayoutBefore=null;
   let appleLayoutUntil=0;
+  let appleLayoutSuppressUntil=0;
   let appleLayoutFrame=0;
   let appleLayoutObserver=null;
 
@@ -24117,7 +24091,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return '';
   }
 
+  function suppressAppleLayoutMotion(duration=420){
+    appleLayoutBefore=null;
+    appleLayoutUntil=0;
+    appleLayoutSuppressUntil=Math.max(
+      appleLayoutSuppressUntil,
+      performance.now()+duration
+    );
+    cancelAnimationFrame(appleLayoutFrame);
+  }
+
   function captureAppleLayout(){
+    if(
+      performance.now()<appleLayoutSuppressUntil ||
+      pointerSortSession ||
+      document.body.classList.contains('pointer-sorting')
+    )return;
     const map=new Map();
     $$([
       '[data-sort-key]',
@@ -24139,6 +24128,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function playAppleLayout(){
     cancelAnimationFrame(appleLayoutFrame);
+    if(performance.now()<appleLayoutSuppressUntil)return;
     if(!appleLayoutBefore || performance.now()>appleLayoutUntil)return;
 
     let played=0;
@@ -24247,6 +24237,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     },true);
 
     appleLayoutObserver=new MutationObserver(mutations=>{
+      if(performance.now()<appleLayoutSuppressUntil)return;
       if(!appleLayoutBefore || performance.now()>appleLayoutUntil)return;
       if(!mutations.some(item=>item.type==='childList'))return;
       playAppleLayout();
@@ -24917,7 +24908,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     const pageMotion=incoming.classList.contains('page-view');
     const motionClass=pageMotion?'page':'canvas';
-    const distance=pageMotion?30:18;
+    const distance=pageMotion?54:34;
     const direction=outgoing.classList.contains(`${motionClass}-left`)?-1:1;
     const duration=Math.max(inDuration,outDuration,pageMotion?MOTION.page:MOTION.canvas);
 
@@ -24929,13 +24920,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const incomingMotion=incoming.animate(
       [
         {
-          transform:`translate3d(${-direction*distance}px,0,0)`,
+          translate:`${-direction*distance}px 0`,
           boxShadow:pageMotion
             ? `${direction*10}px 0 24px rgba(31,38,40,.10)`
             : '0 6px 16px rgba(31,38,40,.06)'
         },
         {
-          transform:'translate3d(0,0,0)',
+          translate:'0 0',
           boxShadow:'0 0 0 rgba(31,38,40,0)'
         }
       ],
@@ -24948,8 +24939,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     const outgoingMotion=outgoing.animate(
       [
-        {transform:'translate3d(0,0,0)'},
-        {transform:`translate3d(${direction*distance*.42}px,0,0)`}
+        {translate:'0 0'},
+        {translate:`${direction*distance*.48}px 0`}
       ],
       {
         duration,

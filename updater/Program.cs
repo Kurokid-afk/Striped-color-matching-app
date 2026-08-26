@@ -52,7 +52,7 @@ internal sealed class UpdaterForm : Form
         _title.ForeColor = Color.FromArgb(34, 40, 43);
         _title.SetBounds(34, 28, 570, 38);
 
-        _subtitle.Text = "升级至 1.0.2 · 自动寻找现有软件并原位更新";
+        _subtitle.Text = $"升级至 {UpdaterEngine.TargetVersion} · 自动寻找现有软件并原位更新";
         _subtitle.ForeColor = Color.FromArgb(105, 116, 122);
         _subtitle.SetBounds(36, 72, 570, 26);
 
@@ -186,7 +186,7 @@ internal sealed class UpdaterForm : Form
         if (result.Success)
         {
             _update.Text = "更新完成";
-            MessageBox.Show(this, "软件已经升级到 1.0.2，原有数据全部保留。", "更新完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, $"软件已经升级到 {UpdaterEngine.TargetVersion}，原有数据全部保留。", "更新完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Close();
             return;
         }
@@ -215,6 +215,7 @@ internal enum FileAvailability
 
 internal static class UpdaterEngine
 {
+    public const string TargetVersion = "1.0.3";
     private const string AppId = "com.kurokid.stripestudio";
     private const string ProductName = "条纹纺织调色";
     private const string RegistryPath = @"Software\Kurokid\StripeStudio";
@@ -401,11 +402,11 @@ internal static class UpdaterEngine
                 progress?.Report("正在启动新版并确认结果…");
                 Process.Start(new ProcessStartInfo(targetPath) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(targetPath)! });
 
-                if (!WaitForVersion("1.0.2", targetPath, TimeSpan.FromSeconds(30)))
+                if (!WaitForVersion(TargetVersion, targetPath, TimeSpan.FromSeconds(30)))
                     throw new IOException("新版启动确认超时");
 
                 File.Delete(backupPath);
-                return new(true, "更新成功 · 已启动 1.0.2");
+                return new(true, $"更新成功 · 已启动 {TargetVersion}");
             }
             catch (Exception error)
             {
