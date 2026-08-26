@@ -206,6 +206,13 @@ internal sealed class UpdaterForm : Form
 
 internal readonly record struct UpdateResult(bool Success, string Message);
 
+internal enum FileAvailability
+{
+    Ready,
+    InUse,
+    AccessDenied
+}
+
 internal static class UpdaterEngine
 {
     private const string AppId = "com.kurokid.stripestudio";
@@ -371,10 +378,15 @@ internal static class UpdaterEngine
             if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
                 return new(false, "升级包校验失败，没有改动现有软件。");
 
-            progress?.Report("正在安全关闭旧版软件…");
-            RequestShutdown(targetPath);
-            if (!WaitForUnlocked(targetPath, TimeSpan.FromSeconds(18)))
-                return new(false, "旧版软件仍在运行，请关闭软件后再试一次。");
+            progress?.Report("正在检查旧版软件是否运行…");
+            var runningFound = CloseRunningAppIfPresent(targetPath, progress);
+            var availability = WaitForAvailable(targetPath, TimeSpan.FromSeconds(runningFound ? 45 : 20));
+            if (availability == FileAvailability.AccessDenied)
+                return new(false, "当前软件位置没有写入权限。请以管理员身份运行升级包，或把主程序移到普通文件夹后重试。");
+            if (availability == FileAvailability.InUse)
+                return new(false, runningFound
+                    ? "检测到旧版进程仍未完全退出，请关闭条纹纺织调色后再试一次。"
+                    : "主程序正被其他程序占用（例如聊天软件传输、杀毒扫描或文件预览）。请稍等片刻后重试。");
 
             progress?.Report("正在原位替换程序，用户数据保持不动…");
             if (File.Exists(backupPath)) File.Delete(backupPath);
@@ -389,7 +401,7 @@ internal static class UpdaterEngine
                 progress?.Report("正在启动新版并确认结果…");
                 Process.Start(new ProcessStartInfo(targetPath) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(targetPath)! });
 
-                if (!WaitForVersion("1.0.2", TimeSpan.FromSeconds(24)))
+                if (!WaitForVersion("1.0.2", targetPath, TimeSpan.FromSeconds(30)))
                     throw new IOException("新版启动确认超时");
 
                 File.Delete(backupPath);
@@ -420,37 +432,101 @@ internal static class UpdaterEngine
         }
     }
 
-    private static void RequestShutdown(string targetPath)
+    private static bool CloseRunningAppIfPresent(string targetPath, IProgress<string>? progress)
     {
+        var expectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Path.GetFullPath(targetPath)
+        };
+
         try
         {
-            using var process = Process.Start(new ProcessStartInfo(targetPath, "--shutdown-for-update")
+            if (File.Exists(RuntimeInfoPath))
             {
-                UseShellExecute = true,
-                WorkingDirectory = Path.GetDirectoryName(targetPath)!
-            });
-            process?.WaitForExit(8000);
+                using var document = JsonDocument.Parse(File.ReadAllText(RuntimeInfoPath));
+                var root = document.RootElement;
+                var sameApp = root.TryGetProperty("appId", out var id) && id.GetString() == AppId;
+                var sameLauncher = root.TryGetProperty("launcherPath", out var launcher)
+                    && PathsEqual(launcher.GetString(), targetPath);
+                if (sameApp && sameLauncher && root.TryGetProperty("executablePath", out var executable))
+                {
+                    var value = executable.GetString();
+                    if (!string.IsNullOrWhiteSpace(value)) expectedPaths.Add(Path.GetFullPath(value));
+                }
+            }
         }
-        catch { }
+        catch (JsonException) { }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+
+        var matches = new List<Process>();
+        foreach (var process in Process.GetProcesses())
+        {
+            try
+            {
+                var processPath = process.MainModule?.FileName;
+                if (!string.IsNullOrWhiteSpace(processPath) && expectedPaths.Contains(Path.GetFullPath(processPath)))
+                    matches.Add(process);
+                else
+                    process.Dispose();
+            }
+            catch
+            {
+                process.Dispose();
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            progress?.Report("未检测到运行中的旧版，准备直接更新…");
+            return false;
+        }
+
+        progress?.Report("检测到旧版正在运行，正在正常关闭…");
+        foreach (var process in matches)
+        {
+            try
+            {
+                if (process.MainWindowHandle != IntPtr.Zero) process.CloseMainWindow();
+            }
+            catch { }
+            finally { process.Dispose(); }
+        }
+        return true;
     }
 
-    private static bool WaitForUnlocked(string path, TimeSpan timeout)
+    private static bool PathsEqual(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right)) return false;
+        try
+        {
+            return Path.GetFullPath(left).Equals(Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private static FileAvailability WaitForAvailable(string path, TimeSpan timeout)
     {
         var end = DateTime.UtcNow + timeout;
+        var accessDenied = false;
         while (DateTime.UtcNow < end)
         {
             try
             {
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-                return true;
+                return FileAvailability.Ready;
             }
             catch (IOException) { Thread.Sleep(250); }
-            catch (UnauthorizedAccessException) { Thread.Sleep(250); }
+            catch (UnauthorizedAccessException)
+            {
+                accessDenied = true;
+                Thread.Sleep(250);
+            }
         }
-        return false;
+        return accessDenied ? FileAvailability.AccessDenied : FileAvailability.InUse;
     }
 
-    private static bool WaitForVersion(string version, TimeSpan timeout)
+    private static bool WaitForVersion(string version, string targetPath, TimeSpan timeout)
     {
         var end = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < end)
@@ -463,7 +539,8 @@ internal static class UpdaterEngine
                     var root = document.RootElement;
                     if (root.TryGetProperty("appId", out var id) && id.GetString() == AppId &&
                         root.TryGetProperty("appVersion", out var appVersion) && appVersion.GetString() == version &&
-                        root.TryGetProperty("state", out var state) && state.GetString() == "running") return true;
+                        root.TryGetProperty("state", out var state) && state.GetString() == "running" &&
+                        root.TryGetProperty("launcherPath", out var launcher) && PathsEqual(launcher.GetString(), targetPath)) return true;
                 }
             }
             catch (JsonException) { }
@@ -514,6 +591,7 @@ internal static class UpdaterEngine
             var target = Path.Combine(testRoot, $"{ProductName}.exe");
             var backup = $"{target}.update-backup";
             File.WriteAllText(target, "old-version-sentinel");
+            var availabilityBefore = WaitForAvailable(target, TimeSpan.FromSeconds(1));
             File.Move(target, backup);
             File.Copy(temp, target, true);
             var replacementPassed = File.Exists(backup)
@@ -523,10 +601,13 @@ internal static class UpdaterEngine
             var found = FindInstalledApp();
             var result = new
             {
-                passed = expected.Equals(actual, StringComparison.OrdinalIgnoreCase) && replacementPassed,
+                passed = expected.Equals(actual, StringComparison.OrdinalIgnoreCase)
+                    && replacementPassed
+                    && availabilityBefore == FileAvailability.Ready,
                 embeddedPayloadHash = actual,
                 expectedHash = expected,
                 replacementTransactionPassed = replacementPassed,
+                unlockedFileDetectionPassed = availabilityBefore == FileAvailability.Ready,
                 discoveredTarget = found,
                 discoveredTargetValid = found is null || IsValidTarget(found),
                 dataDirectory = DataDirectory,
