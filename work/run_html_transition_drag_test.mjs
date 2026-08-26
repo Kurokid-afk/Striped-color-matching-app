@@ -32,6 +32,7 @@ window.addEventListener('load',async()=>{
     const toLibrary=showColorLibrary();
     const library=$('#colorLibraryPage');
     const design=$('#designPage');
+    const stageWidth=$('#pageStage').getBoundingClientRect().width;
     await waitUntil(()=>library.getAnimations().length>0);
     await wait(45);
     const libraryFrames=motionFrames(library);
@@ -45,7 +46,16 @@ window.addEventListener('load',async()=>{
     await toLibrary;
     const libraryFinal=getComputedStyle(library).translate;
 
-    await showDesignPage();
+    const toDesign=showDesignPage();
+    await waitUntil(()=>design.getAnimations().length>0);
+    await wait(45);
+    const pageBackMid={
+      incomingTranslate:getComputedStyle(design).translate,
+      outgoingTranslate:getComputedStyle(library).translate,
+      incomingFrames:motionFrames(design),
+      outgoingFrames:motionFrames(library)
+    };
+    await toDesign;
     state.favorites=[captureFavoriteEntry(state.roles,'motion-test')];
     const toFavorites=showFavoriteCanvas();
     await wait(70);
@@ -70,6 +80,10 @@ window.addEventListener('load',async()=>{
     const initialStripeIds=state.stripes.map(item=>item._sortId);
     renderAll();
     await wait(80);
+    const initialStripeNodes=new Map(
+      [...document.querySelectorAll('#stripeList > .stripe-item')]
+        .map(row=>[row.dataset.sortKey,row])
+    );
     const firstGrip=$('.stripe-drag-grip[data-i="0"]');
     const gripRect=firstGrip.getBoundingClientRect();
     const lastStripe=$('.stripe-item[data-i="3"]');
@@ -92,6 +106,14 @@ window.addEventListener('load',async()=>{
     await wait(320);
     const actualDragOrder=state.stripes.map(item=>item._sortId);
     const actualDragMoved=actualDragOrder.at(-1)===initialStripeIds[0];
+    const actualRows=[...document.querySelectorAll('#stripeList > .stripe-item')];
+    const stripeDomPreserved=actualRows.every(row=>
+      initialStripeNodes.get(row.dataset.sortKey)===row
+    );
+    const stripeIndicesAligned=actualRows.every((row,index)=>
+      Number(row.dataset.i)===index &&
+      [...row.querySelectorAll('[data-i]')].every(el=>Number(el.dataset.i)===index)
+    );
 
     const source=document.createElement('div');
     const proxy=document.createElement('div');
@@ -110,6 +132,7 @@ window.addEventListener('load',async()=>{
     const settleTransforms=settleFrames.map(frame=>frame.transform||'');
     const settleUniquePositions=[...new Set(settleTransforms)];
     await settlePromise;
+    const settleProxyRemoved=!proxy.isConnected;
     proxy.remove();
     source.remove();
     pointerSortSession=null;
@@ -126,6 +149,8 @@ window.addEventListener('load',async()=>{
 
     const result={
       pageMid,
+      pageBackMid,
+      stageWidth,
       libraryFinal,
       canvasMid,
       settleMode:document.body.dataset.sortSettleMode,
@@ -133,6 +158,10 @@ window.addEventListener('load',async()=>{
       settleUniquePositions,
       actualDragMoved,
       actualDragOrder,
+      stripeDomPreserved,
+      stripeIndicesAligned,
+      stripeDropDomCommit:document.body.dataset.stripeDropDomCommit,
+      settleProxyRemoved,
       layoutSuppressed:beforeLayout===afterLayout,
       reducedMotionForcedOff:uiReducedMotion()===false,
       errors
@@ -172,18 +201,28 @@ const hasVisibleTranslate=frames=>frames.some((frame,index)=>
   index===0 && String(frame.translate||'')!=='' && String(frame.translate||'')!=='0px'
 );
 const hasOpacityFrame=frames=>frames.some(frame=>frame.opacity!==undefined);
+const framePixels=value=>Math.abs(parseFloat(String(value||'0'))||0);
 if(
   !hasVisibleTranslate(result.pageMid.incomingFrames) ||
   !hasVisibleTranslate(result.pageMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.pageMid.incomingFrames[0]?.translate)<result.stageWidth*.9 ||
+  framePixels(result.pageMid.outgoingFrames.at(-1)?.translate)<result.stageWidth*.9 ||
+  !hasVisibleTranslate(result.pageBackMid.incomingFrames) ||
+  !hasVisibleTranslate(result.pageBackMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.pageBackMid.incomingFrames[0]?.translate)<result.stageWidth*.9 ||
+  framePixels(result.pageBackMid.outgoingFrames.at(-1)?.translate)<result.stageWidth*.9 ||
   result.pageMid.incomingTranslate==='none' ||
   !hasVisibleTranslate(result.canvasMid.incomingFrames) ||
   result.canvasMid.incomingTranslate==='none' ||
   hasOpacityFrame(result.pageMid.incomingFrames) ||
   hasOpacityFrame(result.canvasMid.incomingFrames) ||
   result.settleMode!=="direct-embed" ||
-  result.settleTransforms.length<2 ||
-  result.settleUniquePositions.length!==1 ||
+  result.settleTransforms.length!==0 ||
+  !result.settleProxyRemoved ||
   !result.actualDragMoved ||
+  !result.stripeDomPreserved ||
+  !result.stripeIndicesAligned ||
+  result.stripeDropDomCommit!=="in-place" ||
   !result.layoutSuppressed ||
   !result.reducedMotionForcedOff ||
   (result.errors||[]).length

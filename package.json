@@ -1,6 +1,6 @@
 {
   "name": "stripe-studio-desktop",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "条纹纺织调色、色库管理与 Excel 数格桌面应用",
   "main": "main.js",
   "author": "Kurokid-afk",

@@ -22975,10 +22975,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     s.settling=true;
 
     const p=s.proxy;
-    const settleDuration=Math.max(72,Math.min(118,duration*.42));
-
-    // 拖动期间真实空位已经实时处于最终位置。松手只做一次“代理层交接”，
-    // 不允许再从鼠标位置重演一遍移动路径。
+    // 拖动期间真实节点已经实时处于最终位置。松手时只交还真实节点，
+    // 不再让代理层淡出、闪烁或重演一遍移动路径。
     suppressAppleLayoutMotion(520);
     document.body.dataset.sortSettleMode='direct-embed';
 
@@ -22993,38 +22991,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     p.x=target.left;
     p.y=target.top;
     p.el.style.transform=finalTransform;
-
-    const proxyAnim=p.el.animate(
-      [
-        {
-          transform:finalTransform,
-          opacity:1,
-          filter:'drop-shadow(0 5px 12px rgba(17,24,39,.09))'
-        },
-        {
-          transform:finalTransform,
-          opacity:0,
-          filter:'drop-shadow(0 1px 2px rgba(17,24,39,0))'
-        }
-      ],
-      {
-        duration:settleDuration,
-        easing:'cubic-bezier(.25,.1,.25,1)',
-        fill:'forwards'
-      }
-    );
-
-    // 后台标签页或省电模式可能暂停 Web Animation，不能让一次拖动
-    // 永远卡在 settling。正常情况下等动画完成；超时则直接提交落位。
-    const finishTimeout=new Promise(resolve=>
-      setTimeout(resolve,settleDuration+140)
-    );
-    const safeFinished=animation=>Promise.race([
-      animation.finished.catch(()=>{}),
-      finishTimeout
-    ]);
-
-    await safeFinished(proxyAnim);
+    p.el.remove();
+    await Promise.resolve();
   }
 
 
@@ -23593,6 +23561,49 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     );
   }
 
+  function commitStripeDomOrderInPlace(){
+    const box=$('#stripeList');
+    if(!box)return false;
+
+    const rows=[...box.children].filter(
+      el=>el.classList?.contains('stripe-item')
+    );
+
+    if(rows.length!==state.stripes.length)return false;
+
+    const orderMatches=rows.every((row,index)=>
+      String(row.dataset.sortKey||'')===
+      String(state.stripes[index]?._sortId||'')
+    );
+
+    if(!orderMatches)return false;
+
+    rows.forEach((row,index)=>{
+      const stripe=state.stripes[index];
+      const value=String(index);
+
+      row.dataset.i=value;
+      row.dataset.sortKey=String(stripe._sortId);
+
+      row.querySelectorAll('[data-i]').forEach(el=>{
+        el.dataset.i=value;
+      });
+
+      const number=row.querySelector('.idx-number');
+      if(number){
+        number.innerHTML=
+          `<span class="idx-prefix">#</span>${String(index+1).padStart(2,'0')}`;
+      }
+
+      const role=row.querySelector('.idx-role');
+      if(role)role.textContent=stripe.role;
+    });
+
+    updateStripeSelectionUI();
+    document.body.dataset.stripeDropDomCommit='in-place';
+    return true;
+  }
+
   async function commitStripePendingDrop(){
     if(!draggedStripeBlock || !pendingStripeDrop || !pointerSortSession){
       await cancelPointerSort();
@@ -23653,9 +23664,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     cleanupPointerSort();
 
     if(changed){
-      // 主画布在拖动过程中已经实时排到最终位置，
-      // 这里只提交数据，不再让画面回弹。
-      renderAll();
+      // 左侧真实节点和主画布在拖动过程中都已经到达最终位置。
+      // 只校准索引与依赖预览，绝不清空并重建整列。
+      const committedInPlace=commitStripeDomOrderInPlace();
+
+      if(!committedInPlace){
+        // 仅在 DOM 被外部破坏时使用安全回退；正常拖放不会走这里。
+        renderStripes();
+        document.body.dataset.stripeDropDomCommit='fallback-render';
+      }
+
+      suppressAppleLayoutMotion(520);
+      renderSchemes();
+      syncFavoriteCurrentButtonState();
+      syncInterfaceMotionBaseline();
+      scheduleDurableVaultSave('stripe-sort');
 
       toast(movingItems.length>1
         ? `已移动 ${movingItems.length} 条相邻条纹`
@@ -24908,9 +24931,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     const pageMotion=incoming.classList.contains('page-view');
     const motionClass=pageMotion?'page':'canvas';
-    const distance=pageMotion?54:34;
+    const stageRect=container.getBoundingClientRect();
+    // 色库是同一个应用里的“空间第二页”：页面级切换走完整一屏，
+    // 画布内部切换仍只做短距离层级位移。
+    const distance=pageMotion
+      ? Math.max(320,stageRect.width||window.innerWidth||320)
+      : 34;
     const direction=outgoing.classList.contains(`${motionClass}-left`)?-1:1;
-    const duration=Math.max(inDuration,outDuration,pageMotion?MOTION.page:MOTION.canvas);
+    const duration=Math.max(
+      inDuration,
+      outDuration,
+      pageMotion?520:MOTION.canvas
+    );
+    const easing=pageMotion
+      ? 'cubic-bezier(.32,.72,0,1)'
+      : MOTION.easeOut;
 
     incoming.classList.add(`${motionClass}-transitioning`,`${motionClass}-entering`);
     outgoing.classList.add(`${motionClass}-transitioning`,`${motionClass}-leaving`);
@@ -24922,7 +24957,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         {
           translate:`${-direction*distance}px 0`,
           boxShadow:pageMotion
-            ? `${direction*10}px 0 24px rgba(31,38,40,.10)`
+            ? `${direction*12}px 0 28px rgba(31,38,40,.11)`
             : '0 6px 16px rgba(31,38,40,.06)'
         },
         {
@@ -24932,7 +24967,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ],
       {
         duration,
-        easing:MOTION.easeOut,
+        easing,
         fill:'both'
       }
     );
@@ -24940,11 +24975,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const outgoingMotion=outgoing.animate(
       [
         {translate:'0 0'},
-        {translate:`${direction*distance*.48}px 0`}
+        {translate:`${direction*distance}px 0`}
       ],
       {
         duration,
-        easing:MOTION.easeOut,
+        easing,
         fill:'both'
       }
     );
@@ -25031,6 +25066,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     purgePointerSortArtifacts();
+    suppressAppleLayoutMotion(1100);
 
     if(!beginUiOperation('page-transition'))return;
     persistentPageBusy=true;
@@ -27375,12 +27411,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       control,
       added
         ? [
-            {transform:'scale(.88) rotate(-4deg)',opacity:.76},
-            {transform:'scale(1) rotate(0)',opacity:1}
+            {transform:'scale(.88) rotate(-4deg)'},
+            {transform:'scale(1) rotate(0)'}
           ]
         : [
-            {transform:'scale(1) rotate(0)',opacity:1},
-            {transform:'scale(.88) rotate(4deg)',opacity:.72}
+            {transform:'scale(1) rotate(0)'},
+            {transform:'scale(.88) rotate(4deg)'}
           ],
       {duration:220,easing:'cubic-bezier(.2,.8,.2,1)'}
     );
@@ -27414,8 +27450,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     uiAnimate(
       chip,
       [
-        {opacity:.78,transform:`translateY(${afterCount>beforeCount?3:-3}px) scale(.94)`},
-        {opacity:1,transform:'translateY(0) scale(1)'}
+        {transform:`translateY(${afterCount>beforeCount?3:-3}px) scale(.94)`},
+        {transform:'translateY(0) scale(1)'}
       ],
       {duration:230}
     );
@@ -28259,28 +28295,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function animatePatternBandEmphasis(stripeIds,{
     duration=280
   }={}){
-    const ids=new Set((stripeIds||[]).map(String));
-    const svg=$('#patternSvg');
-
-    if(!svg || !ids.size)return;
-
-    svg.querySelectorAll(
-      'rect[data-stripe-key][data-repeat-index]'
-    ).forEach(el=>{
-      if(!ids.has(String(el.dataset.stripeKey)))return;
-
-      el.animate(
-        [
-          {filter:'saturate(.72) contrast(.94)'},
-          {filter:'saturate(1.04) contrast(1.01)',offset:.7},
-          {filter:'saturate(1) contrast(1)'}
-        ],
-        {
-          duration,
-          easing:'cubic-bezier(.16,1,.3,1)'
-        }
-      );
-    });
+    // 旧版用饱和度 / 对比度来回变化，视觉上像整条闪了一下。
+    // 条纹尺寸与位置本身已有连续动画，这里不再叠加亮度动画。
+    return;
   }
 
   function animatePatternCanvasRefresh({
@@ -28320,8 +28337,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     chip.animate(
       [
-        {transform:'scale(.94)',opacity:.82},
-        {transform:'scale(1)',opacity:1}
+        {transform:'scale(.94)'},
+        {transform:'scale(1)'}
       ],
       {
         duration:190,
@@ -28542,29 +28559,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return;
     }
 
-    // 连续换色期间不重复闪烁。
-    // 只有第一次点击右侧颜色块、或切换到另一个角色时播放。
-    if(focusRole===lastRoleReplacePulseKey){
-      return;
-    }
-
+    // 快速换色通过右侧目标框和颜色连续过渡确认，不再让画布闪烁。
     lastRoleReplacePulseKey=focusRole;
-
-    const rects=[
-      ...svg.querySelectorAll(
-        `rect[data-role="${CSS.escape(focusRole)}"]`
-      )
-    ];
-
-    pulsePatternRects(
-      rects,
-      {
-        layerClass:'role-replace-pulse-layer',
-        cycles:2,
-        duration:350,
-        stagger:8
-      }
-    );
   }
 
   function toggleRoleFocus(role){
@@ -31221,6 +31217,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(currentAppPage==='library' || persistentPageBusy)return;
 
     const library=$('#colorLibraryPage');
+    suppressAppleLayoutMotion(1200);
 
     // 先在隐藏层完成表格、分组、纹理准备。
     renderLibraryTable();
@@ -31238,6 +31235,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(currentAppPage==='design' || persistentPageBusy)return;
 
     const library=$('#colorLibraryPage');
+    suppressAppleLayoutMotion(1200);
 
     // 设计页也在背后先更新好，再滑回来。
     renderAll();
@@ -31325,12 +31323,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     card?.animate(
       [
         {
-          transform:'scale(.985)',
-          opacity:.88
+          transform:'scale(.985)'
         },
         {
-          transform:'scale(1)',
-          opacity:1
+          transform:'scale(1)'
         }
       ],
       {
@@ -35026,8 +35022,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 {transform:'scale(1)',boxShadow:'0 0 0 0 rgba(89,103,232,0)'}
               ]
             : [
-                {opacity:.72,transform:'scale(.992)'},
-                {opacity:1,transform:'scale(1)'}
+                {transform:'scale(.992)'},
+                {transform:'scale(1)'}
               ],
           {duration:250}
         );
@@ -35211,8 +35207,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         oldCards.map((el,i)=>uiAnimate(
           el,
           [
-            {opacity:1,transform:'translateY(0)'},
-            {opacity:.55,transform:'translateY(-6px)'}
+            {transform:'translateY(0)'},
+            {transform:'translateY(-6px) scale(.985)'}
           ],
           {
             duration:150,
@@ -38026,11 +38022,9 @@ $('#addStripeBtn').onclick=()=>{
           card?.animate(
             [
               {
-                opacity:.58,
                 transform:'scale(.985)'
               },
               {
-                opacity:1,
                 transform:'scale(1)'
               }
             ],
@@ -38470,11 +38464,9 @@ $('#addStripeBtn').onclick=()=>{
         swatch.animate(
           [
             {
-              opacity:.82,
               transform:'scale(.94)'
             },
             {
-              opacity:1,
               transform:'scale(1)'
             }
           ],
