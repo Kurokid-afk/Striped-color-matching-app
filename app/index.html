@@ -18914,15 +18914,13 @@
     z-index:0;
     border-radius:inherit;
     background:#607887;
-    transform:scaleX(0);
-    transform-origin:left center;
-    transition:
-      transform 260ms cubic-bezier(.32,.72,0,1)!important;
+    clip-path:inset(0 100% 0 0);
+    transition:none!important;
     pointer-events:none;
   }
 
   .stripe-item.selected .idx-selection-fill{
-    transform:scaleX(1);
+    clip-path:inset(0 0 0 0);
   }
 
   .stripe-select,
@@ -19015,7 +19013,8 @@
       0 0 0 3px #9b806b!important;
   }
 
-  .role-fill-reveal-old{
+  .role-fill-reveal-old,
+  .role-fill-reveal-new{
     position:absolute!important;
     inset:0!important;
     z-index:4;
@@ -19026,6 +19025,54 @@
     pointer-events:none!important;
     background-position:center!important;
     background-repeat:repeat!important;
+  }
+
+  .role-fill-reveal-new{
+    z-index:5;
+  }
+
+  /* 已被另一个角色使用的候选色不再禁用：以低调的双向箭头表示“点击对调”。 */
+  #paletteGrid .swatch.role-replace-swap{
+    cursor:pointer!important;
+    opacity:1!important;
+    filter:none!important;
+    background:#fff!important;
+    border-color:rgba(128,103,84,.24)!important;
+    box-shadow:
+      inset 0 0 0 1px rgba(155,128,107,.08),
+      0 1px 2px rgba(28,35,39,.04)!important;
+  }
+
+  #paletteGrid .swatch.role-replace-swap::after{
+    content:"↔"!important;
+    position:absolute!important;
+    right:5px!important;
+    top:4px!important;
+    left:auto!important;
+    bottom:auto!important;
+    width:17px!important;
+    height:17px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:999px!important;
+    color:#fff!important;
+    background:#806754!important;
+    border:1px solid rgba(56,43,34,.10)!important;
+    box-shadow:0 1px 2px rgba(36,29,24,.10)!important;
+    opacity:1!important;
+    font-size:11px!important;
+    line-height:1!important;
+    font-weight:700!important;
+    transform:none!important;
+    pointer-events:none!important;
+  }
+
+  #paletteGrid .swatch.role-replace-swap:hover{
+    transform:translateY(-1px)!important;
+    border-color:rgba(128,103,84,.38)!important;
+    box-shadow:
+      inset 0 0 0 1px rgba(155,128,107,.10),
+      0 4px 10px rgba(50,39,32,.08)!important;
   }
 
   @media (prefers-reduced-motion:reduce){
@@ -25942,19 +25989,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         ? candidateFill
         : resolveFillRef(candidateFill);
 
-    if(
-      !selected ||
-      selected.type!=='solid'
-    ){
-      return null;
-    }
+    if(!selected)return null;
 
-    const candidateHex=
-      normalizeHex(selected.hex);
+    const candidateKey=fillVisualKey(
+      selected.id || selected.hex
+    );
 
-    if(!candidateHex){
-      return null;
-    }
+    if(!candidateKey)return null;
 
     for(const role of usedRoleKeys()){
       if(role===targetRole)continue;
@@ -25965,18 +26006,69 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         );
 
       if(
-        current?.type==='solid' &&
-        normalizeHex(current.hex)===
-        candidateHex
+        current &&
+        fillVisualKey(roleFillRef(state.roles[role]))===candidateKey
       ){
         return {
           role,
-          hex:candidateHex
+          ref:roleFillRef(state.roles[role]),
+          type:current.type,
+          id:current.id||null,
+          hex:normalizeHex(current.hex)||null,
+          name:current.name||current.id||current.hex||role
         };
       }
     }
 
     return null;
+  }
+
+  function captureRoleFillAssignment(roleKey){
+    const role=state.roles?.[roleKey];
+    if(!role)return null;
+
+    const assignment={
+      color:normalizeHex(role.color)||'#888888',
+      name:String(role.name||roleKey)
+    };
+
+    if(role.fillId && findFillById(role.fillId)){
+      assignment.fillId=findFillById(role.fillId).id;
+    }
+
+    return assignment;
+  }
+
+  function applyRoleFillAssignment(roleKey,assignment){
+    const role=state.roles?.[roleKey];
+    if(!role || !assignment)return false;
+
+    if(assignment.fillId && findFillById(assignment.fillId)){
+      role.fillId=findFillById(assignment.fillId).id;
+    }else{
+      delete role.fillId;
+    }
+
+    role.color=normalizeHex(assignment.color)||role.color||'#888888';
+    role.name=String(assignment.name||roleKey);
+    return true;
+  }
+
+  function swapRoleFillAssignments(firstRole,secondRole){
+    if(
+      !firstRole ||
+      !secondRole ||
+      firstRole===secondRole ||
+      !state.roles?.[firstRole] ||
+      !state.roles?.[secondRole]
+    )return false;
+
+    const first=captureRoleFillAssignment(firstRole);
+    const second=captureRoleFillAssignment(secondRole);
+
+    applyRoleFillAssignment(firstRole,second);
+    applyRoleFillAssignment(secondRole,first);
+    return true;
   }
 
   function findStripeRoleColorConflict(
@@ -26085,7 +26177,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
   }
 
-  function roleSolidColorKey(roleKey){
+  function roleUsedFillKey(roleKey){
     const role=state.roles?.[roleKey];
     if(!role)return null;
 
@@ -26093,21 +26185,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       roleFillRef(role)
     );
 
-    if(
-      !f ||
-      f.type!=='solid'
-    ){
-      return null;
-    }
+    if(!f)return null;
+    if(f.type==='texture' && f.id)return `texture:${String(f.id).toUpperCase()}`;
 
     const hex=normalizeHex(f.hex);
-
-    return hex
-      ? `solid:${hex.toUpperCase()}`
-      : null;
+    return hex ? `solid:${hex.toUpperCase()}` : null;
   }
 
-  function collapseDuplicateUsedSolidRoles(){
+  function collapseDuplicateUsedFillRoles(){
     if(
       !state?.roles ||
       !Array.isArray(state?.stripes)
@@ -26124,9 +26209,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const role=stripe?.role;
       if(!role || !state.roles[role])return;
 
-      const key=roleSolidColorKey(role);
+      const key=roleUsedFillKey(role);
 
-      // Textures are deliberately not collapsed by representative HEX.
       if(!key)return;
 
       if(!firstRoleByColor.has(key)){
@@ -26177,7 +26261,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ([from,to])=>({
         from,
         to,
-        hex:roleSolidColorKey(to)?.replace('solid:','')||''
+        fillKey:roleUsedFillKey(to)||''
       })
     );
   }
@@ -27108,6 +27192,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     ensureStripeSortIds();
+
+    // 修复旧版本已经产生的“两个正在使用角色引用同一颜色/纹理”。
+    // 视觉不会改变，只把重复条纹统一回第一个角色，之后的新替换走对调逻辑。
+    collapseDuplicateUsedFillRoles();
 
     if(!Array.isArray(state.palette))state.palette=[];
     if(!Array.isArray(state.schemes))state.schemes=[];
@@ -28871,48 +28959,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(cb) cb.checked=checked;
 
       const selectionFill=row.querySelector('.idx-selection-fill');
-      const selectionNumber=row.querySelector('.idx-number');
 
-      if(selectionFill){
-        selectionFill.style.setProperty(
-          'transform',
+      // 使用独立遮罩层播放明确的双向填充。clip-path 不参与卡片布局，
+      // 也不会与选中卡片的 transform / FLIP 动画互相抢占，避免偶发抖动。
+      if(selectionFill && checked!==wasChecked && typeof selectionFill.animate==='function'){
+        selectionFill.getAnimations().forEach(animation=>animation.cancel());
+        selectionFill.style.removeProperty('clip-path');
+
+        const animation=selectionFill.animate(
           checked
-            ? 'scaleX(1)'
-            : 'scaleX(0)',
-          'important'
+            ? [
+                {clipPath:'inset(0 100% 0 0)'},
+                {clipPath:'inset(0 0 0 0)'}
+              ]
+            : [
+                {clipPath:'inset(0 0 0 0)'},
+                {clipPath:'inset(0 100% 0 0)'}
+              ],
+          {
+            duration:280,
+            easing:'cubic-bezier(.32,.72,0,1)',
+            fill:'both'
+          }
         );
-      }
 
-      if(selectionNumber){
-        if(checked){
-          selectionNumber.style.setProperty(
-            'color',
-            '#fff',
-            'important'
-          );
-        }else{
-          selectionNumber.style.removeProperty('color');
-        }
-      }
+        document.body.dataset.stripeBadgeFillMotion=checked?'fill':'drain';
 
-      // 只在用户把现有卡片从“未选中”切到“选中”时播放。
-      // renderStripes 创建出来时已经带 selected，不会因重绘重复动画。
-      if(checked && !wasChecked){
-        const fill=selectionFill;
-
-        if(fill && typeof fill.animate==='function'){
-          fill.getAnimations().forEach(animation=>animation.cancel());
-          fill.animate(
-            [
-              {transform:'scaleX(0)'},
-              {transform:'scaleX(1)'}
-            ],
-            {
-              duration:260,
-              easing:'cubic-bezier(.32,.72,0,1)'
-            }
-          );
-        }
+        animation.finished
+          .catch(()=>{})
+          .finally(()=>{
+            try{animation.cancel();}catch(_){}
+          });
       }
 
       let badge=row.querySelector('.stripe-group-count');
@@ -29575,11 +29652,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         );
 
       if(conflict){
+        swapRoleFillAssignments(roleKey,conflict.role);
         return {
-          ok:false,
-          reason:'duplicate-used-color',
-          conflictRole:conflict.role,
-          hex:conflict.hex
+          ok:true,
+          type:byId.type,
+          id:byId.id,
+          swappedWith:conflict.role
         };
       }
 
@@ -29616,11 +29694,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         );
 
       if(conflict){
+        swapRoleFillAssignments(roleKey,conflict.role);
         return {
-          ok:false,
-          reason:'duplicate-used-color',
-          conflictRole:conflict.role,
-          hex:conflict.hex
+          ok:true,
+          type:'solid',
+          hex:h,
+          swappedWith:conflict.role
         };
       }
 
@@ -29936,10 +30015,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return;
         }
 
-        renderAll();
+        if(result.swappedWith){
+          suppressAppleLayoutMotion(520);
+          document.body.dataset.roleFillOnly='1';
+        }
+
+        try{
+          renderAll();
+        }finally{
+          delete document.body.dataset.roleFillOnly;
+        }
 
         toast(
-          result.id
+          result.swappedWith
+            ? `${roleLabel(role)} 与 ${roleLabel(result.swappedWith)} 的颜色已对调`
+            : result.id
             ? `角色 ${role} 已切换到 ${result.id}`
             : `角色 ${role} 已切换到 ${result.hex}`
         );
@@ -31628,19 +31718,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       typeof preview.animate!=='function'
     )return Promise.resolve();
 
-    preview.querySelector('.role-fill-reveal-old')?.remove();
+    preview.querySelectorAll(
+      '.role-fill-reveal-old, .role-fill-reveal-new'
+    ).forEach(layer=>layer.remove());
 
     const oldLayer=document.createElement('span');
     oldLayer.className='role-fill-reveal-old';
     oldLayer.setAttribute('aria-hidden','true');
     oldLayer.setAttribute('style',fillPreviewStyle(previousRef));
     preview.appendChild(oldLayer);
+
+    const nextLayer=document.createElement('span');
+    nextLayer.className='role-fill-reveal-new';
+    nextLayer.setAttribute('aria-hidden','true');
+    nextLayer.setAttribute(
+      'style',
+      fillPreviewStyle(
+        roleFillRef(state.roles[role])
+      )
+    );
+    preview.appendChild(nextLayer);
     target.classList.add('role-replace-applying');
 
-    const animation=oldLayer.animate(
+    const animation=nextLayer.animate(
       [
-        {clipPath:'inset(0 0 0 0)'},
-        {clipPath:'inset(0 0 0 100%)'}
+        {clipPath:'inset(0 100% 0 0)'},
+        {clipPath:'inset(0 0 0 0)'}
       ],
       {
         duration,
@@ -31664,6 +31767,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(fallbackTimer!==null)clearTimeout(fallbackTimer);
       try{animation.cancel();}catch(_){}
       oldLayer.remove();
+      nextLayer.remove();
       target.classList.remove('role-replace-applying');
     };
 
@@ -31732,28 +31836,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         selected
       );
 
-    if(conflict){
-      animateDuplicateRoleReject(
-        role,
-        ref
-      );
-
-      toast(
-        `${roleLabel(conflict.role)} 已经在使用 ${conflict.hex}，这个颜色不能重复选择`
-      );
-
-      return false;
-    }
-
+    const swapRole=conflict?.role||null;
+    const swapBeforeRef=swapRole
+      ? roleFillRef(state.roles[swapRole])
+      : null;
+    const affectedRoles=new Set(
+      [role,swapRole].filter(Boolean)
+    );
     const affectedIds=state.stripes
-      .filter(s=>s.role===role)
+      .filter(s=>affectedRoles.has(s.role))
       .map(s=>s._sortId)
       .filter(Boolean);
 
-    // 只有通过硬限制后才进入历史并真正换色。
+    // 选到另一个正在使用角色的颜色时，不制造重复，也不拒绝操作：
+    // 两个角色的完整颜色资源（ID / 纹理 / HEX / 名称）直接对调。
     pushHistory();
 
-    if(selected.id){
+    if(swapRole){
+      swapRoleFillAssignments(role,swapRole);
+      document.body.dataset.roleSwapMotion=JSON.stringify({
+        firstRole:role,
+        secondRole:swapRole,
+        mode:'swap-used-fill'
+      });
+    }else if(selected.id){
       state.roles[role].fillId=selected.id;
       state.roles[role].name=
         selected.name || role;
@@ -31794,18 +31900,28 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       delete document.body.dataset.roleFillOnly;
     }
 
+    // 动画覆盖层必须在 renderAll 同一帧建立；若延到下一帧，浏览器会先显示
+    // 最终颜色、再跳回旧颜色播放，肉眼看到的就是一次刷新闪烁。
+    animateRoleFillReplacement(
+      role,
+      beforeRef,
+      {duration:320}
+    );
+
+    if(swapRole && swapBeforeRef){
+      animateRoleFillReplacement(
+        swapRole,
+        swapBeforeRef,
+        {duration:320}
+      );
+    }
+
     requestAnimationFrame(()=>{
       animatePatternBandEmphasis(
         affectedIds,
         {
           duration:320
         }
-      );
-
-      animateRoleFillReplacement(
-        role,
-        beforeRef,
-        {duration:320}
       );
 
       const undoBtn=$('#undoBtn');
@@ -31828,6 +31944,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         },900);
       }
     });
+
+    toast(
+      swapRole
+        ? `${roleLabel(role)} 与 ${roleLabel(swapRole)} 的颜色已对调`
+        : `${roleLabel(role)} 已更换为 ${selected.name||selected.id||selected.hex}`
+    );
 
     return true;
   }
@@ -31854,26 +31976,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       d.className=
         'swatch'+(
           replaceConflict
-            ? ' role-replace-blocked'
+            ? ' role-replace-swap'
             : ''
         );
 
-      d.tabIndex=
-        replaceConflict
-          ? -1
-          : 0;
+      d.tabIndex=0;
 
       d.dataset.index=i;
       d.dataset.sortKey=`palette_${String(ref)}`;
 
       if(replaceConflict){
-        d.setAttribute(
-          'aria-disabled',
-          'true'
-        );
-
+        d.dataset.swapRole=replaceConflict.role;
         d.title=
-          `${roleLabel(replaceConflict.role)} 已在使用 ${replaceConflict.hex} · 不能重复选择`;
+          `${roleLabel(replaceConflict.role)} 正在使用 ${replaceConflict.name} · 点击后与 ${roleLabel(pendingRoleReplace)} 对调`;
       }
 
       const displayName=f.library ? f.name : (findLibraryColorByHex(f.hex)?.name || f.hex);

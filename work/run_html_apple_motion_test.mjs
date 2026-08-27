@@ -96,24 +96,34 @@ window.addEventListener('load', async () => {
     const stripeCheckbox=$('.stripe-select[data-i="0"]');
     const stripeBadge=$('.stripe-item[data-i="0"] .idx');
     const stripeFill=stripeBadge.querySelector('.idx-selection-fill');
-    const stripeBadgeBefore=getComputedStyle(stripeFill).transform;
+    const stripeBadgeBefore=getComputedStyle(stripeFill).clipPath;
     stripeCheckbox.checked=true;
     stripeCheckbox.dispatchEvent(new Event('change',{bubbles:true}));
     await wait(85);
     const selectedStripeBadge=$('.stripe-item[data-i="0"] .idx');
     const selectedStripeFill=selectedStripeBadge.querySelector('.idx-selection-fill');
-    const stripeBadgeMid=getComputedStyle(selectedStripeFill).transform;
+    const stripeBadgeMid=getComputedStyle(selectedStripeFill).clipPath;
     const stripeBadgeFrames=(selectedStripeFill.getAnimations()||[])
       .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
     const stripeCheckboxHasScale=(stripeCheckbox.getAnimations()||[])
       .flatMap(animation=>animation.effect?.getKeyframes?.()||[])
       .some(frame=>String(frame.transform||'').includes('scale('));
     await wait(260);
-    const stripeBadgeAfter=getComputedStyle(selectedStripeFill).transform;
+    const stripeBadgeAfter=getComputedStyle(selectedStripeFill).clipPath;
     const selectedNumberColor=getComputedStyle(
       selectedStripeBadge.querySelector('.idx-number')
     ).color;
     const stripeBadgeConnectedAtSelection=selectedStripeBadge.isConnected;
+    const selectionSetAfterFill=stripeSelection.has(0);
+
+    const drainCheckbox=$('.stripe-select[data-i="0"]');
+    drainCheckbox.checked=false;
+    drainCheckbox.dispatchEvent(new Event('change',{bubbles:true}));
+    await wait(45);
+    const drainedFill=$('.stripe-item[data-i="0"] .idx-selection-fill');
+    const stripeDrainFrames=(drainedFill.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const selectionClearedAfterDrain=!stripeSelection.has(0);
 
     beginRoleReplace('A');
     await wait(70);
@@ -136,14 +146,57 @@ window.addEventListener('load', async () => {
     const roleCardHasTransformMotion=roleCardFrames.some(
       frame=>String(frame.transform||'').trim() && String(frame.transform)!=='none'
     );
-    const fillReveal=replaceTargetAfter?.querySelector('.role-fill-reveal-old');
+    const fillReveal=replaceTargetAfter?.querySelector('.role-fill-reveal-new');
     const fillRevealFrames=(fillReveal?.getAnimations()||[])
       .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
     const fillMotionMeta=JSON.parse(document.body.dataset.roleFillMotion||'{}');
     await waitUntil(()=>(
-      !replaceTargetAfter?.querySelector('.role-fill-reveal-old')
+      !replaceTargetAfter?.querySelector('.role-fill-reveal-new')
     ),1000);
-    const fillRevealCleaned=!replaceTargetAfter?.querySelector('.role-fill-reveal-old');
+    const fillRevealCleaned=!replaceTargetAfter?.querySelector('.role-fill-reveal-new');
+
+    renderPalette();
+    await wait(30);
+    const swapSwatch=$('#paletteGrid .swatch[data-index="1"]');
+    const swapCandidateClass=swapSwatch?.classList.contains('role-replace-swap')||false;
+    const swapCandidateEnabled=swapSwatch?.getAttribute('aria-disabled')!=='true';
+    delete document.body.dataset.roleSwapMotion;
+    const swapApplied=applyPaletteRefToPendingRole('#E8EBED');
+    await waitUntil(()=>(
+      !!$('#roles .role-item[data-role="A"] .role-fill-reveal-new') &&
+      !!$('#roles .role-item[data-role="B"] .role-fill-reveal-new')
+    ));
+    const swapTargetA=$('#roles .role-item[data-role="A"]');
+    const swapTargetB=$('#roles .role-item[data-role="B"]');
+    const swapAHasFill=!!swapTargetA?.querySelector('.role-fill-reveal-new');
+    const swapBHasFill=!!swapTargetB?.querySelector('.role-fill-reveal-new');
+    const swapCardHasTransform=[swapTargetA,swapTargetB].some(card=>(card?.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[])
+      .some(frame=>String(frame.transform||'').trim() && String(frame.transform)!=='none'));
+    const swapMeta=JSON.parse(document.body.dataset.roleSwapMotion||'{}');
+    const swappedA=roleFillRef(state.roles.A);
+    const swappedB=roleFillRef(state.roles.B);
+    const usedFillKeys=usedRoleKeys().map(role=>fillVisualKey(roleFillRef(state.roles[role])));
+    const swapKeptUnique=new Set(usedFillKeys).size===usedFillKeys.length;
+
+    const textureId='T998';
+    colorLibrary.push({
+      id:textureId,type:'texture',name:'旧版重复纹理测试',
+      image:'data:image/png;base64,iVBORw0KGgo=',brightness:50,scale:100
+    });
+    state.roles={
+      A:{fillId:textureId,color:'#777777',name:'纹理一',locked:false},
+      C:{fillId:textureId,color:'#777777',name:'纹理二',locked:false}
+    };
+    state.stripes=[
+      {lanes:4,role:'A'},
+      {lanes:3,role:'C'}
+    ];
+    ensureStripeSortIds();
+    normalizeStateIntegrity();
+    const legacyTextureDuplicateCollapsed=
+      new Set(state.stripes.map(stripe=>stripe.role)).size===1 &&
+      state.stripes.every(stripe=>stripe.role==='A');
 
     const result={
       appleMotionInstalled:document.body.dataset.appleMotionInstalled,
@@ -172,11 +225,13 @@ window.addEventListener('load', async () => {
         mid:stripeBadgeMid,
         after:stripeBadgeAfter,
         frameCount:stripeBadgeFrames.length,
-        frameTransforms:stripeBadgeFrames.map(frame=>frame.transform||''),
+        frameClipPaths:stripeBadgeFrames.map(frame=>frame.clipPath||''),
+        drainFrameClipPaths:stripeDrainFrames.map(frame=>frame.clipPath||''),
+        fillDirection:document.body.dataset.stripeBadgeFillMotion,
         selectedNumberColor,
-        selectedNumberStyle:selectedStripeBadge.querySelector('.idx-number').getAttribute('style'),
         checkboxHasScale:stripeCheckboxHasScale,
-        selected:stripeSelection.has(0),
+        selected:selectionSetAfterFill,
+        clearedAfterDrain:selectionClearedAfterDrain,
         selectedRowClass:selectedStripeBadge.parentElement.className,
         badgeConnectedAtSelection:stripeBadgeConnectedAtSelection
       },
@@ -193,6 +248,19 @@ window.addEventListener('load', async () => {
         fillRevealCleaned,
         pendingRoleReplace,
         resultingColor:state.roles.A.color
+      },
+      roleSwapMotion:{
+        swapCandidateClass,
+        swapCandidateEnabled,
+        swapApplied,
+        swapAHasFill,
+        swapBHasFill,
+        swapCardHasTransform,
+        swapMeta,
+        swappedA,
+        swappedB,
+        swapKeptUnique,
+        legacyTextureDuplicateCollapsed
       },
       runtimeErrors
     };
@@ -257,13 +325,14 @@ if (
   !result.randomBackground.includes("linear-gradient") ||
   result.pageBackground !== "rgb(238, 240, 242)" ||
   !result.selectedPulseCycles ||
-  result.stripeSelectionMotion.before===result.stripeSelectionMotion.after ||
   result.stripeSelectionMotion.frameCount<2 ||
-  !result.stripeSelectionMotion.frameTransforms.some(value=>String(value).includes('scaleX(0)')) ||
-  !result.stripeSelectionMotion.frameTransforms.some(value=>String(value).includes('scaleX(1)')) ||
-  !String(result.stripeSelectionMotion.selectedNumberStyle).includes('255, 255, 255') ||
+  !result.stripeSelectionMotion.frameClipPaths.some(value=>String(value).includes('100%')) ||
+  !result.stripeSelectionMotion.frameClipPaths.some(value=>String(value).includes('0px')) ||
+  !result.stripeSelectionMotion.drainFrameClipPaths.some(value=>String(value).includes('0px')) ||
+  !result.stripeSelectionMotion.drainFrameClipPaths.some(value=>String(value).includes('100%')) ||
   result.stripeSelectionMotion.checkboxHasScale ||
   !result.stripeSelectionMotion.selected ||
+  !result.stripeSelectionMotion.clearedAfterDrain ||
   result.roleReplaceMotion.frameAnimationName!=='roleReplaceBorderBreath' ||
   result.roleReplaceMotion.frameAnimationIterations!=='infinite' ||
   !result.roleReplaceMotion.frameOpacityMotion ||
@@ -276,7 +345,17 @@ if (
   result.roleReplaceMotion.fillMotionMeta.duration!==320 ||
   !result.roleReplaceMotion.fillRevealCleaned ||
   result.roleReplaceMotion.pendingRoleReplace!=='A' ||
-  result.roleReplaceMotion.resultingColor!=='#7B5D4E' ||
+  !result.roleSwapMotion.swapCandidateClass ||
+  !result.roleSwapMotion.swapCandidateEnabled ||
+  !result.roleSwapMotion.swapApplied ||
+  !result.roleSwapMotion.swapAHasFill ||
+  !result.roleSwapMotion.swapBHasFill ||
+  result.roleSwapMotion.swapCardHasTransform ||
+  result.roleSwapMotion.swapMeta.mode!=='swap-used-fill' ||
+  result.roleSwapMotion.swappedA!=='#E8EBED' ||
+  result.roleSwapMotion.swappedB!=='#7B5D4E' ||
+  !result.roleSwapMotion.swapKeptUnique ||
+  !result.roleSwapMotion.legacyTextureDuplicateCollapsed ||
   (result.runtimeErrors||[]).length
 ) {
   throw new Error(`Unexpected result: ${JSON.stringify(result)}`);
