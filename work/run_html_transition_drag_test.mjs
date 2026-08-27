@@ -57,8 +57,10 @@ window.addEventListener('load',async()=>{
     };
     await toDesign;
     state.favorites=[captureFavoriteEntry(state.roles,'motion-test')];
+    const canvasWidth=$('.canvas-wrap').getBoundingClientRect().width;
     const toFavorites=showFavoriteCanvas();
-    await wait(70);
+    await waitUntil(()=>$('#favoriteOverview').getAnimations().length>0);
+    await wait(45);
     const favorite=$('#favoriteOverview');
     const pattern=$('#patternSvg');
     const canvasMid={
@@ -68,7 +70,122 @@ window.addEventListener('load',async()=>{
       outgoingFrames:motionFrames(pattern)
     };
     await toFavorites;
-    await showCurrentCanvas();
+    const canvasForwardDirection=document.body.dataset.canvasTransition;
+
+    const toCurrent=showCurrentCanvas();
+    await waitUntil(()=>pattern.getAnimations().length>0);
+    await wait(45);
+    const canvasBackMid={
+      incomingTranslate:getComputedStyle(pattern).translate,
+      outgoingTranslate:getComputedStyle(favorite).translate,
+      incomingFrames:motionFrames(pattern),
+      outgoingFrames:motionFrames(favorite)
+    };
+    await toCurrent;
+    const canvasBackDirection=document.body.dataset.canvasTransition;
+
+    const compareRoles=roleNames();
+    const compareBase=Object.fromEntries(compareRoles.map(role=>[
+      role,
+      serializeFillRef(roleFillRef(state.roles[role]))
+    ]));
+    const reversedRefs=compareRoles
+      .map(role=>serializeFillRef(roleFillRef(state.roles[role])))
+      .reverse();
+    const compareAlternate=Object.fromEntries(
+      compareRoles.map((role,index)=>[role,reversedRefs[index]])
+    );
+    state.schemes=[
+      {mapping:compareBase},
+      {mapping:compareAlternate}
+    ];
+    state.selectedSchemes=[0,1];
+    renderSchemes(false);
+
+    const toCompare=showCompareCanvas();
+    const compareCanvas=$('#compareCanvas');
+    await waitUntil(()=>compareCanvas.getAnimations().length>0);
+    await wait(45);
+    const compareMid={
+      incomingTranslate:getComputedStyle(compareCanvas).translate,
+      outgoingTranslate:getComputedStyle(pattern).translate,
+      incomingFrames:motionFrames(compareCanvas),
+      outgoingFrames:motionFrames(pattern)
+    };
+    await toCompare;
+    const compareForwardDirection=document.body.dataset.canvasTransition;
+
+    const compareToCurrent=showCurrentCanvas();
+    await waitUntil(()=>pattern.getAnimations().length>0);
+    await wait(45);
+    const compareBackMid={
+      incomingTranslate:getComputedStyle(pattern).translate,
+      outgoingTranslate:getComputedStyle(compareCanvas).translate,
+      incomingFrames:motionFrames(pattern),
+      outgoingFrames:motionFrames(compareCanvas)
+    };
+    await compareToCurrent;
+    const compareBackDirection=document.body.dataset.canvasTransition;
+
+    state.selectedSchemes=[];
+    const invalidCompareBefore=currentCanvasPage;
+    await showCompareCanvas();
+    const invalidCompareRejected=(
+      currentCanvasPage===invalidCompareBefore &&
+      !persistentCanvasBusy &&
+      uiOperation==='idle'
+    );
+
+    state.schemeFilter='all';
+    renderSchemes(false);
+    const schemes=$('#schemes');
+    const schemesWidth=schemes.getBoundingClientRect().width;
+    const toFavoriteSchemes=switchSchemeFilter('favorites');
+    await waitUntil(()=>schemes.getAnimations().length>0);
+    await wait(35);
+    const schemeForwardOutFrames=motionFrames(schemes);
+    await waitUntil(()=>(
+      document.body.dataset.schemeFilterPhase==='incoming'
+    ));
+    await wait(25);
+    const schemeForwardInFrames=motionFrames(schemes);
+    const schemeForwardInComputed=getComputedStyle(schemes).translate;
+    await toFavoriteSchemes;
+    const schemeForwardDirection=document.body.dataset.schemeFilterTransition;
+    const schemeForwardMotion=JSON.parse(document.body.dataset.schemeFilterMotion);
+
+    const toAllSchemes=switchSchemeFilter('all');
+    await waitUntil(()=>schemes.getAnimations().length>0);
+    await wait(35);
+    const schemeBackOutFrames=motionFrames(schemes);
+    await waitUntil(()=>(
+      document.body.dataset.schemeFilterPhase==='incoming'
+    ));
+    await wait(25);
+    const schemeBackInFrames=motionFrames(schemes);
+    const schemeBackInComputed=getComputedStyle(schemes).translate;
+    await toAllSchemes;
+    const schemeBackDirection=document.body.dataset.schemeFilterTransition;
+    const schemeBackMotion=JSON.parse(document.body.dataset.schemeFilterMotion);
+
+    const rapidForward=switchSchemeFilter('favorites');
+    const ignoredReverse=switchSchemeFilter('all');
+    await Promise.all([rapidForward,ignoredReverse]);
+    const rapidFilterFinal=state.schemeFilter;
+    await switchSchemeFilter('all');
+
+    const favoriteBackup=[...state.favorites];
+    state.favorites=[];
+    renderSchemes(false);
+    await switchSchemeFilter('favorites');
+    const emptyFavoritesStable=(
+      state.schemeFilter==='favorites' &&
+      !schemeFilterBusy &&
+      uiOperation==='idle'
+    );
+    await switchSchemeFilter('all');
+    state.favorites=favoriteBackup;
+    renderSchemes(false);
 
     state.stripes=[
       {lanes:1,role:'A'},
@@ -152,7 +269,31 @@ window.addEventListener('load',async()=>{
       pageBackMid,
       stageWidth,
       libraryFinal,
+      canvasWidth,
       canvasMid,
+      canvasBackMid,
+      canvasForwardDirection,
+      canvasBackDirection,
+      compareMid,
+      compareBackMid,
+      compareForwardDirection,
+      compareBackDirection,
+      invalidCompareRejected,
+      schemesWidth,
+      schemeForwardOutFrames,
+      schemeForwardInFrames,
+      schemeForwardInComputed,
+      schemeForwardMotion,
+      schemeBackOutFrames,
+      schemeBackInFrames,
+      schemeBackInComputed,
+      schemeBackMotion,
+      schemeForwardDirection,
+      schemeBackDirection,
+      rapidFilterFinal,
+      emptyFavoritesStable,
+      schemeFilterBusyFinal:schemeFilterBusy,
+      uiOperationFinal:uiOperation,
       settleMode:document.body.dataset.sortSettleMode,
       settleTransforms,
       settleUniquePositions,
@@ -213,7 +354,50 @@ if(
   framePixels(result.pageBackMid.outgoingFrames.at(-1)?.translate)<result.stageWidth*.9 ||
   result.pageMid.incomingTranslate==='none' ||
   !hasVisibleTranslate(result.canvasMid.incomingFrames) ||
+  !hasVisibleTranslate(result.canvasMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.canvasMid.incomingFrames[0]?.translate)<result.canvasWidth*.9 ||
+  framePixels(result.canvasMid.outgoingFrames.at(-1)?.translate)<result.canvasWidth*.9 ||
   result.canvasMid.incomingTranslate==='none' ||
+  !hasVisibleTranslate(result.canvasBackMid.incomingFrames) ||
+  !hasVisibleTranslate(result.canvasBackMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.canvasBackMid.incomingFrames[0]?.translate)<result.canvasWidth*.9 ||
+  framePixels(result.canvasBackMid.outgoingFrames.at(-1)?.translate)<result.canvasWidth*.9 ||
+  hasOpacityFrame(result.canvasBackMid.incomingFrames) ||
+  result.canvasForwardDirection!=='pattern->favorites:forward' ||
+  result.canvasBackDirection!=='favorites->pattern:backward' ||
+  !hasVisibleTranslate(result.compareMid.incomingFrames) ||
+  !hasVisibleTranslate(result.compareMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.compareMid.incomingFrames[0]?.translate)<result.canvasWidth*.9 ||
+  framePixels(result.compareMid.outgoingFrames.at(-1)?.translate)<result.canvasWidth*.9 ||
+  !hasVisibleTranslate(result.compareBackMid.incomingFrames) ||
+  !hasVisibleTranslate(result.compareBackMid.outgoingFrames.slice().reverse()) ||
+  framePixels(result.compareBackMid.incomingFrames[0]?.translate)<result.canvasWidth*.9 ||
+  framePixels(result.compareBackMid.outgoingFrames.at(-1)?.translate)<result.canvasWidth*.9 ||
+  hasOpacityFrame(result.compareMid.incomingFrames) ||
+  hasOpacityFrame(result.compareBackMid.incomingFrames) ||
+  result.compareForwardDirection!=='pattern->compare:forward' ||
+  result.compareBackDirection!=='compare->pattern:backward' ||
+  !result.invalidCompareRejected ||
+  framePixels(result.schemeForwardOutFrames.at(-1)?.translate)<result.schemesWidth*.9 ||
+  framePixels(result.schemeBackOutFrames.at(-1)?.translate)<result.schemesWidth*.9 ||
+  hasOpacityFrame(result.schemeForwardOutFrames) ||
+  hasOpacityFrame(result.schemeForwardInFrames) ||
+  hasOpacityFrame(result.schemeBackOutFrames) ||
+  hasOpacityFrame(result.schemeBackInFrames) ||
+  result.schemeForwardDirection!=='all->favorites:forward' ||
+  result.schemeBackDirection!=='favorites->all:backward' ||
+  result.schemeForwardMotion.outgoingX>=0 ||
+  result.schemeForwardMotion.incomingX<=0 ||
+  result.schemeForwardMotion.distance<result.schemesWidth*.9 ||
+  result.schemeBackMotion.outgoingX<=0 ||
+  result.schemeBackMotion.incomingX>=0 ||
+  result.schemeBackMotion.distance<result.schemesWidth*.9 ||
+  result.schemeForwardInComputed==='none' ||
+  result.schemeBackInComputed==='none' ||
+  result.rapidFilterFinal!=='favorites' ||
+  !result.emptyFavoritesStable ||
+  result.schemeFilterBusyFinal ||
+  result.uiOperationFinal!=='idle' ||
   hasOpacityFrame(result.pageMid.incomingFrames) ||
   hasOpacityFrame(result.canvasMid.incomingFrames) ||
   result.settleMode!=="direct-embed" ||

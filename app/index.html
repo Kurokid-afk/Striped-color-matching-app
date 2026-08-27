@@ -18890,6 +18890,11 @@
     aspect-ratio:auto!important;
   }
 
+  #schemes.scheme-page-transitioning{
+    pointer-events:none!important;
+    will-change:translate;
+  }
+
   @media (prefers-reduced-motion:reduce){
     .page-view,
     .canvas-view,
@@ -24697,7 +24702,29 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   let persistentPageBusy=false;
   let currentCanvasPage='pattern';
   let persistentCanvasBusy=false;
+  let schemeFilterBusy=false;
+  const CANVAS_PAGE_ORDER=Object.freeze([
+    'pattern',
+    'favorites',
+    'compare'
+  ]);
+  const SCHEME_FILTER_ORDER=Object.freeze([
+    'all',
+    'favorites'
+  ]);
+  const schemeFilterScrollMemory={
+    all:0,
+    favorites:0
+  };
   const warmedTextureIds=new Set();
+
+  function orderedPageDirection(order,from,to){
+    const fromIndex=order.indexOf(from);
+    const toIndex=order.indexOf(to);
+
+    if(fromIndex<0 || toIndex<0)return 0;
+    return toIndex>fromIndex ? 1 : -1;
+  }
 
   function setCanvasModeControl(mode){
     const slot=$('#canvasModeSwitch');
@@ -24926,6 +24953,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     outgoing,
     commit,
     onReveal,
+    fullSlide=false,
     inDuration=300,
     outDuration=300
   }){
@@ -24955,20 +24983,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     const pageMotion=incoming.classList.contains('page-view');
+    const spatialPageMotion=pageMotion || fullSlide;
     const motionClass=pageMotion?'page':'canvas';
     const stageRect=container.getBoundingClientRect();
-    // 色库是同一个应用里的“空间第二页”：页面级切换走完整一屏，
-    // 画布内部切换仍只做短距离层级位移。
-    const distance=pageMotion
+    // 色库和主画布模式都按同一空间中的相邻页面处理：完整横移，
+    // 两层同时运动且全程不透明，避免短促跳变或白色刷新帧。
+    const distance=spatialPageMotion
       ? Math.max(320,stageRect.width||window.innerWidth||320)
       : 34;
     const direction=outgoing.classList.contains(`${motionClass}-left`)?-1:1;
     const duration=Math.max(
       inDuration,
       outDuration,
-      pageMotion?520:MOTION.canvas
+      spatialPageMotion?520:MOTION.canvas
     );
-    const easing=pageMotion
+    const easing=spatialPageMotion
       ? 'cubic-bezier(.32,.72,0,1)'
       : MOTION.easeOut;
 
@@ -24981,7 +25010,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       [
         {
           translate:`${-direction*distance}px 0`,
-          boxShadow:pageMotion
+          boxShadow:spatialPageMotion
             ? `${direction*12}px 0 28px rgba(31,38,40,.11)`
             : '0 6px 16px rgba(31,38,40,.06)'
         },
@@ -34384,7 +34413,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function switchCanvasView(target){
-    if(target===currentCanvasPage || persistentCanvasBusy)return;
+    if(
+      !CANVAS_PAGE_ORDER.includes(target) ||
+      target===currentCanvasPage ||
+      persistentCanvasBusy
+    )return;
 
     if(uiOperationBusy()){
       toast('请先完成当前操作');
@@ -34411,8 +34444,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     try{
       const wrap=$('.canvas-wrap');
-      const outgoing=canvasViewForMode(currentCanvasPage);
+      const previousPage=currentCanvasPage;
+      const direction=orderedPageDirection(
+        CANVAS_PAGE_ORDER,
+        previousPage,
+        target
+      );
+      const outgoing=canvasViewForMode(previousPage);
       const incoming=canvasViewForMode(target);
+
+      if(!wrap || !outgoing || !incoming)return;
+
+      document.body.dataset.canvasTransition=
+        `${previousPage}->${target}:${direction>0?'forward':'backward'}`;
 
       const currentHeight=Math.max(1,wrap.getBoundingClientRect().height);
 
@@ -34425,6 +34469,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         container:wrap,
         incoming,
         outgoing,
+        fullSlide:true,
         inDuration:145,
         outDuration:280,
 
@@ -34435,7 +34480,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
           setCanvasPosition(
             outgoing,
-            target==='pattern'?'right':'left'
+            direction>0?'left':'right'
           );
           setCanvasPosition(incoming,'active');
 
@@ -35286,37 +35331,110 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function switchSchemeFilter(nextFilter){
-    if(state.schemeFilter===nextFilter)return;
+    if(
+      !SCHEME_FILTER_ORDER.includes(nextFilter) ||
+      state.schemeFilter===nextFilter ||
+      schemeFilterBusy
+    )return;
 
-    const oldCards=$$('#schemes .scheme');
+    if(uiOperationBusy())return;
+    if(!beginUiOperation('scheme-filter-transition'))return;
 
-    if(!uiReducedMotion() && oldCards.length){
-      await Promise.all(
-        oldCards.map((el,i)=>uiAnimate(
-          el,
+    schemeFilterBusy=true;
+    suppressAppleLayoutMotion(900);
+
+    const previousFilter=state.schemeFilter;
+    const direction=orderedPageDirection(
+      SCHEME_FILTER_ORDER,
+      previousFilter,
+      nextFilter
+    );
+    const box=$('#schemes');
+
+    document.body.dataset.schemeFilterTransition=
+      `${previousFilter}->${nextFilter}:${direction>0?'forward':'backward'}`;
+
+    let outgoingMotion=null;
+    let incomingMotion=null;
+
+    try{
+      if(!box){
+        state.schemeFilter=nextFilter;
+        renderSchemes(false);
+        return;
+      }
+
+      schemeFilterScrollMemory[previousFilter]=box.scrollTop||0;
+      box.classList.add('scheme-page-transitioning');
+
+      const distance=Math.max(
+        260,
+        box.getBoundingClientRect().width||260
+      );
+      const outgoingX=direction>0 ? -distance : distance;
+      const incomingX=-outgoingX;
+
+      document.body.dataset.schemeFilterMotion=JSON.stringify({
+        distance,
+        outgoingX,
+        incomingX
+      });
+
+      if(!uiReducedMotion() && typeof box.animate==='function'){
+        document.body.dataset.schemeFilterPhase='outgoing';
+        outgoingMotion=box.animate(
           [
-            {transform:'translateY(0)'},
-            {transform:'translateY(-6px) scale(.985)'}
+            {translate:'0 0'},
+            {translate:`${outgoingX}px 0`}
           ],
           {
-            duration:150,
-            delay:Math.min(i*10,60),
-            easing:'cubic-bezier(.32,0,.67,0)'
+            duration:210,
+            easing:'cubic-bezier(.4,0,.6,1)',
+            fill:'both'
           }
-        ))
-      );
+        );
+
+        await outgoingMotion.finished.catch(()=>{});
+      }
+
+      // 先用内联位移接住旧页的最终帧，再撤销旧动画并换内容；
+      // 浏览器在任何一帧都不会把容器短暂画回中央。
+      box.style.translate=`${incomingX}px 0`;
+      try{outgoingMotion?.cancel();}catch(_){}
+      outgoingMotion=null;
+
+      state.schemeFilter=nextFilter;
+      renderSchemes(false);
+      box.scrollTop=schemeFilterScrollMemory[nextFilter]||0;
+
+      if(!uiReducedMotion() && typeof box.animate==='function'){
+        // 新内容从相反方向的屏外连续滑入。
+        document.body.dataset.schemeFilterPhase='incoming';
+        incomingMotion=box.animate(
+          [
+            {translate:`${incomingX}px 0`},
+            {translate:'0 0'}
+          ],
+          {
+            duration:310,
+            easing:'cubic-bezier(.32,.72,0,1)',
+            fill:'both'
+          }
+        );
+
+        await incomingMotion.finished.catch(()=>{});
+      }
+
+      syncInterfaceMotionBaseline();
+    }finally{
+      try{outgoingMotion?.cancel();}catch(_){}
+      try{incomingMotion?.cancel();}catch(_){}
+      box?.style.removeProperty('translate');
+      box?.classList.remove('scheme-page-transitioning');
+      document.body.dataset.schemeFilterPhase='idle';
+      schemeFilterBusy=false;
+      endUiOperation('scheme-filter-transition');
     }
-
-    state.schemeFilter=nextFilter;
-    renderSchemes(false);
-
-    uiStaggerIn($$('#schemes .scheme'),{
-      distance:8,
-      duration:300,
-      step:32
-    });
-
-    syncInterfaceMotionBaseline();
   }
 
   function generateSchemes(){
@@ -39231,7 +39349,11 @@ $('#addStripeBtn').onclick=()=>{
     $('#schemes')?.addEventListener(
       'scroll',
       ()=>{
-        schemesScrollTopMemory=
+        const filter=SCHEME_FILTER_ORDER.includes(state.schemeFilter)
+          ? state.schemeFilter
+          : 'all';
+
+        schemeFilterScrollMemory[filter]=
           $('#schemes')?.scrollTop || 0;
       },
       {passive:true}
