@@ -27,9 +27,10 @@ window.addEventListener('load',()=>{
     {lanes:4,role:'B'},{lanes:8,role:'A'},{lanes:2,role:'B'}
   ];
   state.roles={
-    A:{color:'#1F2937',name:'A'},B:{color:'#F5F0E6',name:'B'},
-    C:{color:'#8FA8D8',name:'C'},D:{color:'#D8E8E4',name:'D'}
+    A:{color:'#1F2937',name:'深海黑'},B:{color:'#F5F0E6',name:'暖米白'},
+    C:{color:'#8FA8D8',name:'雾蓝'},D:{color:'#D8E8E4',name:'薄荷灰'}
   };
+  state.name='秋冬针织系列';
   ensureStripeSortIds();
   state.favorites=mappings.map((mapping,index)=>captureFavoriteEntry(mapping,'preview-'+index));
   currentCanvasPage='favorites';
@@ -58,7 +59,7 @@ await execFileAsync(electron,[
   fileURLToPath(previewHtmlPath),
   resolvedOutput,
   "1800",
-  "1445"
+  "1540"
 ],{windowsHide:true,maxBuffer:8*1024*1024});
 
 console.log(resolvedOutput);

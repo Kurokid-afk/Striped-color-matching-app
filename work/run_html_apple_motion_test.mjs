@@ -17,8 +17,20 @@ window.addEventListener('load', async () => {
   window.addEventListener('error',event=>runtimeErrors.push(String(event.error||event.message)));
   window.addEventListener('unhandledrejection',event=>runtimeErrors.push(String(event.reason)));
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const waitUntil=async(test,timeout=1200)=>{
+    const end=performance.now()+timeout;
+    while(performance.now()<end){
+      if(test())return true;
+      await wait(20);
+    }
+    return false;
+  };
 
   try {
+    for(let i=0;i<60 && !durableVaultReady;i++)await wait(50);
+    await wait(80);
+    pendingRoleReplace=null;
+    stripeSelection.clear();
     state.stripes=[
       {lanes:8,role:'A'},
       {lanes:4,role:'B'}
@@ -27,7 +39,7 @@ window.addEventListener('load', async () => {
       A:{color:'#17191C',locked:false,name:'深色'},
       B:{color:'#E8EBED',locked:false,name:'浅色'}
     };
-    state.palette=['#17191C','#E8EBED'];
+    state.palette=['#17191C','#E8EBED','#7B5D4E'];
     state.schemes=[];
     state.favorites=[];
     schemePreviewMapping=null;
@@ -79,6 +91,60 @@ window.addEventListener('load', async () => {
     const randomStyle=getComputedStyle($('#randomStripeBtn'));
     const pageStyle=getComputedStyle(document.body);
 
+    stripeSelection.clear();
+    updateStripeSelectionUI();
+    const stripeCheckbox=$('.stripe-select[data-i="0"]');
+    const stripeBadge=$('.stripe-item[data-i="0"] .idx');
+    const stripeFill=stripeBadge.querySelector('.idx-selection-fill');
+    const stripeBadgeBefore=getComputedStyle(stripeFill).transform;
+    stripeCheckbox.checked=true;
+    stripeCheckbox.dispatchEvent(new Event('change',{bubbles:true}));
+    await wait(85);
+    const selectedStripeBadge=$('.stripe-item[data-i="0"] .idx');
+    const selectedStripeFill=selectedStripeBadge.querySelector('.idx-selection-fill');
+    const stripeBadgeMid=getComputedStyle(selectedStripeFill).transform;
+    const stripeBadgeFrames=(selectedStripeFill.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const stripeCheckboxHasScale=(stripeCheckbox.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[])
+      .some(frame=>String(frame.transform||'').includes('scale('));
+    await wait(260);
+    const stripeBadgeAfter=getComputedStyle(selectedStripeFill).transform;
+    const selectedNumberColor=getComputedStyle(
+      selectedStripeBadge.querySelector('.idx-number')
+    ).color;
+    const stripeBadgeConnectedAtSelection=selectedStripeBadge.isConnected;
+
+    beginRoleReplace('A');
+    await wait(70);
+    const replaceTargetBefore=$('#roles .role-item[data-role="A"]');
+    const replaceFrame=replaceTargetBefore.querySelector('.role-replace-frame');
+    const replaceFrameStyle=getComputedStyle(replaceFrame);
+    const replaceFrameAnimationName=replaceFrameStyle.animationName;
+    const replaceFrameAnimationIterations=replaceFrameStyle.animationIterationCount;
+    const replaceFrameAnimations=(replaceFrame.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const replaceTargetHasScale=beginRoleReplace.toString().includes('scale(');
+
+    delete document.body.dataset.roleFillMotion;
+    const replacementApplied=applyPaletteRefToPendingRole('#7B5D4E');
+    await waitUntil(()=>!!document.body.dataset.roleFillMotion);
+    await wait(35);
+    const replaceTargetAfter=$('#roles .role-item[data-role="A"]');
+    const roleCardFrames=(replaceTargetAfter?.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const roleCardHasTransformMotion=roleCardFrames.some(
+      frame=>String(frame.transform||'').trim() && String(frame.transform)!=='none'
+    );
+    const fillReveal=replaceTargetAfter?.querySelector('.role-fill-reveal-old');
+    const fillRevealFrames=(fillReveal?.getAnimations()||[])
+      .flatMap(animation=>animation.effect?.getKeyframes?.()||[]);
+    const fillMotionMeta=JSON.parse(document.body.dataset.roleFillMotion||'{}');
+    await waitUntil(()=>(
+      !replaceTargetAfter?.querySelector('.role-fill-reveal-old')
+    ),1000);
+    const fillRevealCleaned=!replaceTargetAfter?.querySelector('.role-fill-reveal-old');
+
     const result={
       appleMotionInstalled:document.body.dataset.appleMotionInstalled,
       pressFrames:pressFrames.length,
@@ -101,6 +167,33 @@ window.addEventListener('load', async () => {
       randomBackground:randomStyle.backgroundImage,
       pageBackground:pageStyle.backgroundColor,
       selectedPulseCycles:updateStripeSelectionMarkers.toString().includes('cycles:2'),
+      stripeSelectionMotion:{
+        before:stripeBadgeBefore,
+        mid:stripeBadgeMid,
+        after:stripeBadgeAfter,
+        frameCount:stripeBadgeFrames.length,
+        frameTransforms:stripeBadgeFrames.map(frame=>frame.transform||''),
+        selectedNumberColor,
+        selectedNumberStyle:selectedStripeBadge.querySelector('.idx-number').getAttribute('style'),
+        checkboxHasScale:stripeCheckboxHasScale,
+        selected:stripeSelection.has(0),
+        selectedRowClass:selectedStripeBadge.parentElement.className,
+        badgeConnectedAtSelection:stripeBadgeConnectedAtSelection
+      },
+      roleReplaceMotion:{
+        frameAnimationName:replaceFrameAnimationName,
+        frameAnimationIterations:replaceFrameAnimationIterations,
+        frameOpacityMotion:replaceFrameAnimations.some(frame=>frame.opacity!==undefined),
+        targetHasScale:replaceTargetHasScale,
+        roleCardHasTransformMotion,
+        roleCardFrameTransforms:roleCardFrames.map(frame=>frame.transform||''),
+        replacementApplied,
+        fillRevealFrames,
+        fillMotionMeta,
+        fillRevealCleaned,
+        pendingRoleReplace,
+        resultingColor:state.roles.A.color
+      },
       runtimeErrors
     };
 
@@ -164,6 +257,26 @@ if (
   !result.randomBackground.includes("linear-gradient") ||
   result.pageBackground !== "rgb(238, 240, 242)" ||
   !result.selectedPulseCycles ||
+  result.stripeSelectionMotion.before===result.stripeSelectionMotion.after ||
+  result.stripeSelectionMotion.frameCount<2 ||
+  !result.stripeSelectionMotion.frameTransforms.some(value=>String(value).includes('scaleX(0)')) ||
+  !result.stripeSelectionMotion.frameTransforms.some(value=>String(value).includes('scaleX(1)')) ||
+  !String(result.stripeSelectionMotion.selectedNumberStyle).includes('255, 255, 255') ||
+  result.stripeSelectionMotion.checkboxHasScale ||
+  !result.stripeSelectionMotion.selected ||
+  result.roleReplaceMotion.frameAnimationName!=='roleReplaceBorderBreath' ||
+  result.roleReplaceMotion.frameAnimationIterations!=='infinite' ||
+  !result.roleReplaceMotion.frameOpacityMotion ||
+  result.roleReplaceMotion.targetHasScale ||
+  result.roleReplaceMotion.roleCardHasTransformMotion ||
+  !result.roleReplaceMotion.replacementApplied ||
+  result.roleReplaceMotion.fillRevealFrames.length<2 ||
+  !result.roleReplaceMotion.fillRevealFrames.some(frame=>String(frame.clipPath||'').includes('100%')) ||
+  result.roleReplaceMotion.fillMotionMeta.direction!=='left-to-right' ||
+  result.roleReplaceMotion.fillMotionMeta.duration!==320 ||
+  !result.roleReplaceMotion.fillRevealCleaned ||
+  result.roleReplaceMotion.pendingRoleReplace!=='A' ||
+  result.roleReplaceMotion.resultingColor!=='#7B5D4E' ||
   (result.runtimeErrors||[]).length
 ) {
   throw new Error(`Unexpected result: ${JSON.stringify(result)}`);

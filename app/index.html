@@ -18895,6 +18895,139 @@
     will-change:translate;
   }
 
+  /* 条纹选择只让编号胶囊从左向右着色，不缩放卡片或复选框。 */
+  .stripe-item .idx{
+    position:relative!important;
+    isolation:isolate;
+    overflow:hidden!important;
+  }
+
+  /* 选中态的底色保持中性，真正的深色只由填充层从左向右推进。
+     否则旧的 selected 背景会先整块变色，看起来像“只有取消有动画”。 */
+  .stripe-item.selected .idx{
+    background:#eef2f4!important;
+  }
+
+  .stripe-item .idx-selection-fill{
+    position:absolute;
+    inset:0;
+    z-index:0;
+    border-radius:inherit;
+    background:#607887;
+    transform:scaleX(0);
+    transform-origin:left center;
+    transition:
+      transform 260ms cubic-bezier(.32,.72,0,1)!important;
+    pointer-events:none;
+  }
+
+  .stripe-item.selected .idx-selection-fill{
+    transform:scaleX(1);
+  }
+
+  .stripe-select,
+  .stripe-select:checked{
+    transform:none!important;
+    transition:
+      background-color 170ms ease,
+      border-color 170ms ease,
+      box-shadow 170ms ease!important;
+  }
+
+  .stripe-item .idx-number,
+  .stripe-item .idx-role{
+    position:relative;
+    z-index:1;
+    transition:
+      color 170ms ease,
+      background-color 170ms ease!important;
+  }
+
+  .stripe-item.selected .idx-number{
+    color:#fff!important;
+  }
+
+  .stripe-item.selected .idx-role{
+    color:#40545e!important;
+    background:rgba(255,255,255,.94)!important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.62)!important;
+  }
+
+  /* 快速换色目标：褐色静态边框上叠一层深色呼吸线。
+     只改变一像素边框透明度，不闪整张卡片。 */
+  #roles .role-item.role-replace-target{
+    position:relative!important;
+    background:linear-gradient(90deg,#fbf7f3 0,#fff 34%)!important;
+    border-color:#9b806b!important;
+    box-shadow:
+      inset 3px 0 0 #9b806b,
+      inset 0 0 0 1px rgba(155,128,107,.16),
+      0 1px 2px rgba(28,35,39,.04)!important;
+    transform:none!important;
+  }
+
+  #roles .role-item.role-replace-target .role-name-text{
+    color:#3d342e!important;
+    font-weight:700!important;
+  }
+
+  #roles .role-item.role-replace-target .role-key{
+    color:#fff!important;
+    background:#806754!important;
+    box-shadow:inset 0 0 0 1px rgba(57,45,37,.12)!important;
+  }
+
+  #roles .role-item .role-replace-frame{
+    position:absolute;
+    inset:-1px;
+    z-index:5;
+    border:1.5px solid #20282c;
+    border-radius:inherit;
+    opacity:0;
+    pointer-events:none;
+  }
+
+  #roles .role-item.role-replace-target .role-replace-frame{
+    animation:
+      roleReplaceBorderBreath
+      1320ms
+      cubic-bezier(.4,0,.2,1)
+      infinite;
+  }
+
+  #roles .role-item.role-replace-target.role-replace-applying .role-replace-frame{
+    animation:none!important;
+    opacity:0!important;
+  }
+
+  @keyframes roleReplaceBorderBreath{
+    0%,100%{opacity:.08}
+    48%{opacity:.92}
+  }
+
+  #roles .role-item.role-replace-target .role-fill-preview{
+    position:relative!important;
+    overflow:hidden!important;
+    transform:none!important;
+    animation:none!important;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 3px #9b806b!important;
+  }
+
+  .role-fill-reveal-old{
+    position:absolute!important;
+    inset:0!important;
+    z-index:4;
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    border-radius:inherit!important;
+    pointer-events:none!important;
+    background-position:center!important;
+    background-repeat:repeat!important;
+  }
+
   @media (prefers-reduced-motion:reduce){
     .page-view,
     .canvas-view,
@@ -24035,6 +24168,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function applePressSurface(el){
     if(!el || uiReducedMotion() || typeof el.animate!=='function')return;
+    if(el.matches?.('.stripe-select'))return;
     cancelAppleMotion(appleActionMotion,el);
 
     const large=
@@ -24059,6 +24193,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function appleReleaseSurface(el){
     if(!el || uiReducedMotion() || typeof el.animate!=='function')return;
+    if(el.matches?.('.stripe-select'))return;
 
     const large=
       el.matches('.scheme-preview-frame,.image-dropzone,.excel-counter-drop,svg') ||
@@ -24094,6 +24229,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ? raw
       : raw.closest('input,select,textarea,button');
     if(!el || typeof el.animate!=='function')return;
+    if(el.matches('.stripe-select'))return;
 
     if(continuous){
       const last=Number(el.dataset.appleMotionAt)||0;
@@ -27907,6 +28043,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       })
     );
 
+    // 快速换色有自己独立的“新颜色横向涨入”动画。
+    // 此时跳过通用的卡片/侧栏位移动画，避免角色卡左右抖一次。
+    if(document.body.dataset.roleFillOnly==='1')return;
+
     if(uiReducedMotion())return;
 
     if(schemeMotion){
@@ -28724,10 +28864,56 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $$('.stripe-item').forEach(row=>{
       const i=+row.dataset.i;
       const checked=stripeSelection.has(i);
+      const wasChecked=row.classList.contains('selected');
       row.classList.toggle('selected',checked);
       row.classList.toggle('group-first',checked && i===min && count>1);
       const cb=row.querySelector('.stripe-select');
       if(cb) cb.checked=checked;
+
+      const selectionFill=row.querySelector('.idx-selection-fill');
+      const selectionNumber=row.querySelector('.idx-number');
+
+      if(selectionFill){
+        selectionFill.style.setProperty(
+          'transform',
+          checked
+            ? 'scaleX(1)'
+            : 'scaleX(0)',
+          'important'
+        );
+      }
+
+      if(selectionNumber){
+        if(checked){
+          selectionNumber.style.setProperty(
+            'color',
+            '#fff',
+            'important'
+          );
+        }else{
+          selectionNumber.style.removeProperty('color');
+        }
+      }
+
+      // 只在用户把现有卡片从“未选中”切到“选中”时播放。
+      // renderStripes 创建出来时已经带 selected，不会因重绘重复动画。
+      if(checked && !wasChecked){
+        const fill=selectionFill;
+
+        if(fill && typeof fill.animate==='function'){
+          fill.getAnimations().forEach(animation=>animation.cancel());
+          fill.animate(
+            [
+              {transform:'scaleX(0)'},
+              {transform:'scaleX(1)'}
+            ],
+            {
+              duration:260,
+              easing:'cubic-bezier(.32,.72,0,1)'
+            }
+          );
+        }
+      }
 
       let badge=row.querySelector('.stripe-group-count');
       if(!badge){
@@ -29140,6 +29326,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <span class="stripe-drag-grip" draggable="true" data-i="${i}" title="按住这里拖动">⋮⋮</span>
         <input class="stripe-select" data-i="${i}" type="checkbox" ${stripeSelection.has(i)?'checked':''} title="选择条纹"/>
         <div class="idx" title="条纹序号 / 对应颜色角色">
+          <span class="idx-selection-fill" aria-hidden="true"></span>
           <span class="idx-number"><span class="idx-prefix">#</span>${String(i+1).padStart(2,'0')}</span>
           <span class="idx-role">${s.role}</span>
         </div>
@@ -29556,6 +29743,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       div.removeAttribute('aria-pressed');
 
       div.innerHTML=`
+        <span class="role-replace-frame" aria-hidden="true"></span>
         <span class="role-name-view" title="${f?.name||x.name||r}">
           <span class="role-name-text">${f?.library?f.name:(x.name||f?.hex||r)}</span>
           <span class="role-usage-meta" title="${usage[r]?.lanes||0} 路">
@@ -31370,25 +31558,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     pendingRoleReplace=role;
     updateRoleReplaceUI();
 
-    const card=$(
-      `#roles .role-item[data-role="${CSS.escape(role)}"]`
-    );
-
-    card?.animate(
-      [
-        {
-          transform:'scale(.985)'
-        },
-        {
-          transform:'scale(1)'
-        }
-      ],
-      {
-        duration:210,
-        easing:'cubic-bezier(.2,.8,.2,1)'
-      }
-    );
-
     requestAnimationFrame(
       updateRoleFocusOverlay
     );
@@ -31440,6 +31609,71 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // 防止 renderRoles / renderPalette 的布局更新改变 scrollTop。
     restore();
     requestAnimationFrame(restore);
+  }
+
+  function animateRoleFillReplacement(
+    role,
+    previousRef,
+    {duration=320}={}
+  ){
+    const target=$(
+      `#roles .role-item[data-role="${CSS.escape(role)}"]`
+    );
+    const preview=target?.querySelector('.role-fill-preview');
+
+    if(
+      !target ||
+      !preview ||
+      !previousRef ||
+      typeof preview.animate!=='function'
+    )return Promise.resolve();
+
+    preview.querySelector('.role-fill-reveal-old')?.remove();
+
+    const oldLayer=document.createElement('span');
+    oldLayer.className='role-fill-reveal-old';
+    oldLayer.setAttribute('aria-hidden','true');
+    oldLayer.setAttribute('style',fillPreviewStyle(previousRef));
+    preview.appendChild(oldLayer);
+    target.classList.add('role-replace-applying');
+
+    const animation=oldLayer.animate(
+      [
+        {clipPath:'inset(0 0 0 0)'},
+        {clipPath:'inset(0 0 0 100%)'}
+      ],
+      {
+        duration,
+        easing:'cubic-bezier(.32,.72,0,1)',
+        fill:'both'
+      }
+    );
+
+    document.body.dataset.roleFillMotion=JSON.stringify({
+      role,
+      direction:'left-to-right',
+      duration
+    });
+
+    let cleaned=false;
+    let fallbackTimer=null;
+
+    const cleanup=()=>{
+      if(cleaned)return;
+      cleaned=true;
+      if(fallbackTimer!==null)clearTimeout(fallbackTimer);
+      try{animation.cancel();}catch(_){}
+      oldLayer.remove();
+      target.classList.remove('role-replace-applying');
+    };
+
+    // 桌面 WebView 在窗口失焦或低功耗节流时，finished 偶尔会延后；
+    // 兜底定时器确保旧颜色覆盖层绝不会残留。
+    fallbackTimer=setTimeout(cleanup,duration+100);
+
+    return animation.finished
+      .catch(()=>{})
+      .finally(cleanup);
   }
 
   function applyPaletteRefToPendingRole(ref){
@@ -31548,9 +31782,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // 关键：不清 pendingRoleReplace。
     // 同时保持“当前色板”滚动位置不动：
     // 用户正在看哪一段，就继续停在哪一段连续试色。
-    preserveRightPaletteScroll(()=>{
-      renderAll();
-    });
+    // 快速换色只播放色块横向揭示；禁止全局 FLIP 把整张角色卡抬起再落下。
+    suppressAppleLayoutMotion(520);
+    document.body.dataset.roleFillOnly='1';
+
+    try{
+      preserveRightPaletteScroll(()=>{
+        renderAll();
+      });
+    }finally{
+      delete document.body.dataset.roleFillOnly;
+    }
 
     requestAnimationFrame(()=>{
       animatePatternBandEmphasis(
@@ -31560,25 +31802,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
       );
 
-      const target=$(
-        `#roles .role-item[data-role="${CSS.escape(role)}"]`
-      );
-
-      target?.animate(
-        [
-          {
-            transform:'scale(.988)',
-            boxShadow:'0 0 0 5px rgba(230,161,49,.12)',
-          },
-          {
-            transform:'scale(1)',
-            boxShadow:'0 0 0 0 rgba(230,161,49,0)'
-          }
-        ],
-        {
-          duration:230,
-          easing:'cubic-bezier(.2,.8,.2,1)'
-        }
+      animateRoleFillReplacement(
+        role,
+        beforeRef,
+        {duration:320}
       );
 
       const undoBtn=$('#undoBtn');
@@ -33163,7 +33390,71 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function exportCanvasMetaText(){
     const lanes=totalLanes();
     const singleSize=(lanes*state.laneSize).toFixed(1);
-    return `单循环：${lanes} 路 / ${singleSize} mm · 循环 × ${state.repeatCount}`;
+    const projectName=String(state.name||'未命名条纹项目').trim()||'未命名条纹项目';
+    return `${projectName} · 单循环：${lanes} 路 / ${singleSize} mm · 循环 × ${state.repeatCount}`;
+  }
+
+  function exportPatternColorNames(mapping,visual=null,frozenFills=null){
+    const stripes=visual?.stripes||state.stripes||[];
+    const roles=[...new Set(stripes.map(stripe=>stripe.role).filter(Boolean))];
+
+    return roles.map(role=>{
+      const frozen=frozenFills?.[role];
+
+      // 名称永远以当前色库为准；收藏里的 frozenFills 只冻结视觉，
+      // 不能把当时的旧名字永久带进以后生成的展示图。
+      const frozenLibraryFill=
+        (frozen?.id && findFillById(frozen.id)) ||
+        (
+          frozen?.type!=='texture' &&
+          frozen?.hex &&
+          findLibraryColorByHex(frozen.hex)
+        );
+
+      if(frozenLibraryFill?.name){
+        return String(frozenLibraryFill.name).trim();
+      }
+
+      const ref=mappingFillRef(mapping,role);
+      const fill=resolveFillRef(ref);
+
+      if(fill?.name)return String(fill.name).trim();
+      if(fill?.hex){
+        return findLibraryColorByHex(fill.hex)?.name||fill.hex;
+      }
+
+      if(frozen?.name)return String(frozen.name).trim();
+
+      return roleLabel(role);
+    }).filter(Boolean);
+  }
+
+  function exportCaptionColorLines(names,width){
+    const maxChars=Math.max(14,Math.floor((width-32)/12));
+    const lines=[''];
+
+    names.forEach((name,index)=>{
+      const token=(lines[lines.length-1]?' / ':'')+name;
+
+      if(lines[lines.length-1].length+token.length<=maxChars){
+        lines[lines.length-1]+=token;
+        return;
+      }
+
+      if(lines.length<2){
+        lines.push(name);
+        return;
+      }
+
+      const remaining=names.length-index;
+      const suffix=` … +${remaining}色`;
+      lines[1]=lines[1].slice(
+        0,
+        Math.max(1,maxChars-suffix.length)
+      )+suffix;
+    });
+
+    return lines.filter(Boolean).slice(0,2);
   }
 
   function nestedPatternSvg(mapping,x,y,w,h,visual=null,frozenFills=null){
@@ -33190,7 +33481,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     h,
     visual=null,
     frozenFills=null,
-    index=0
+    index=0,
+    label=''
   ){
     // 展示图不再给每个方案套灰色描边框。
     // 只保留极薄的白色装裱边与向下扩散的环境阴影：浅色条纹仍有边界，
@@ -33203,6 +33495,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const clipId=`copyDisplayCardClip_${index}`;
     const sampleNo=String(index+1).padStart(2,'0');
     const captionY=surfaceY+surfaceH+19;
+    const captionLabel=String(label||`方案 ${sampleNo}`).trim();
+    const colorLines=exportCaptionColorLines(
+      exportPatternColorNames(mapping,visual,frozenFills),
+      surfaceW
+    );
+    const colorMarkup=colorLines.map((line,lineIndex)=>`
+          <text
+            x="${surfaceX+30}" y="${captionY+18+lineIndex*15}"
+            font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+            font-size="11.5" font-weight="450"
+            fill="#899196">${escapeXmlText(line)}</text>`
+    ).join('');
 
     return `
       <g
@@ -33235,7 +33539,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             )}
           </g>
         </g>
-        <g data-export-card-caption="${sampleNo}">
+        <g
+          data-export-card-caption="${sampleNo}"
+          data-export-card-colors="${escapeXmlText(colorLines.join(' | '))}">
           <line
             x1="${surfaceX}" y1="${captionY-4}"
             x2="${surfaceX+22}" y2="${captionY-4}"
@@ -33245,7 +33551,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             x="${surfaceX+30}" y="${captionY}"
             font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
             font-size="13" font-weight="650"
-            letter-spacing=".08em" fill="#6D767A">方案 ${sampleNo}</text>
+            letter-spacing=".05em" fill="#5F696E">${escapeXmlText(captionLabel)}</text>
+          ${colorMarkup}
         </g>
       </g>`;
   }
@@ -33266,7 +33573,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const width=1800;
     const margin=48;
     const metaY=42;
-    const metaSize=24;
     const contentTop=70;
     const contentWidth=width-margin*2;
 
@@ -33292,7 +33598,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
               cellH,
               item.favorite?.visual||null,
               item.favorite?.fills||null,
-              i
+              i,
+              item.label
             )}
           </g>`;
       });
@@ -33318,7 +33625,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       // 复制收藏总览时横向保持紧凑，纵向留出略明显但不过宽的呼吸缝。
       // 色条数量再多，相邻两行也不会视觉粘连成同一张图。
       const columnGap=12;
-      const rowGap=38;
+      const rowGap=68;
       const cellW=(contentWidth-columnGap*(cols-1))/cols;
       const cellH=cellW/2;
       const rows=Math.ceil(n/cols);
@@ -33341,13 +33648,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
               cellH,
               f.visual||null,
               f.fills||null,
-              i
+              i,
+              f.name||f.label||`方案 ${String(i+1).padStart(2,'0')}`
             )}
           </g>`;
       });
     }
 
     const meta=exportCanvasMetaText();
+    const metaUnits=[...meta].reduce(
+      (sum,char)=>sum+(/[\u2E80-\u9FFF]/.test(char)?1:.58),
+      0
+    );
+    const metaSize=Math.max(
+      16,
+      Math.min(24,contentWidth/Math.max(1,metaUnits))
+    );
 
     const svg=`<svg xmlns="http://www.w3.org/2000/svg"
                     width="${width}" height="${height}"

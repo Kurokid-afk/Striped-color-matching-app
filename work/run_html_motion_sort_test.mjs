@@ -81,11 +81,20 @@ window.addEventListener('load', async () => {
     await wait(100);
     const unchangedSerial=Number(document.body.dataset.motionSerial||0);
 
+    colorLibrary=[
+      {id:'C901',type:'solid',name:'旧金棕名',hex:'#C79A62'},
+      {id:'C902',type:'solid',name:'旧赤棕名',hex:'#B56F74'},
+      {id:'C903',type:'solid',name:'旧深色名',hex:'#111111'},
+      {id:'C904',type:'solid',name:'旧浅色名',hex:'#EEEEEE'}
+    ];
     const favoriteA=captureFavoriteEntry({A:'#C79A62',B:'#B56F74'},'test-a');
     const favoriteB=captureFavoriteEntry({A:'#B56F74',B:'#C79A62'},'test-b');
     const favoriteC=captureFavoriteEntry({A:'#111111',B:'#EEEEEE'},'test-c');
     const favoriteD=captureFavoriteEntry({A:'#EEEEEE',B:'#111111'},'test-d');
     state.favorites=[favoriteA,favoriteB,favoriteC,favoriteD];
+    colorLibrary.find(item=>item.id==='C901').name='色库金棕新名';
+    colorLibrary.find(item=>item.id==='C902').name='色库赤棕新名';
+    state.name='导出标题测试项目';
     currentCanvasPage='favorites';
     const exportData=buildCurrentDisplayExportSvg();
     const cells=[...exportData.svg.matchAll(/<g[^>]*data-export-card="[0-9]+"[^>]*data-card-x="([0-9.]+)"[^>]*data-card-y="([0-9.]+)"[^>]*data-card-width="([0-9.]+)"[^>]*data-card-height="([0-9.]+)"[^>]*>/g)]
@@ -125,6 +134,12 @@ window.addEventListener('load', async () => {
       hasCardBorder:exportData.svg.includes('stroke="#C7CDD0"'),
       hasCardShadow:exportData.svg.includes('filter="url(#copyDisplayCardShadow)"'),
       cardCaptionCount:(exportData.svg.match(/data-export-card-caption=/g)||[]).length,
+      colorCaptionCount:(exportData.svg.match(/data-export-card-colors=/g)||[]).length,
+      hasProjectName:exportData.svg.includes('导出标题测试项目 · 单循环'),
+      usesCurrentLibraryNames:
+        exportData.svg.includes('色库金棕新名') &&
+        exportData.svg.includes('色库赤棕新名') &&
+        !exportData.svg.includes('旧金棕名'),
       runtimeErrors
     };
 
@@ -188,11 +203,14 @@ if (
   result.surfaceSwapUsesOpacity ||
   result.hasWave ||
   result.horizontalGap !== 12 ||
-  result.verticalGap !== 38 ||
+  result.verticalGap !== 68 ||
   result.exportCells !== 4 ||
   result.hasCardBorder ||
   !result.hasCardShadow ||
   result.cardCaptionCount !== 4 ||
+  result.colorCaptionCount !== 4 ||
+  !result.hasProjectName ||
+  !result.usesCurrentLibraryNames ||
   (result.runtimeErrors||[]).length
 ) {
   throw new Error(`Unexpected result: ${JSON.stringify(result)}`);
