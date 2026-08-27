@@ -18865,6 +18865,31 @@
 
   /* 用户指定保留：选中条纹仍由 pulsePatternRects 原样高亮两次。 */
 
+  /* 收藏总览始终使用主画布的可用空间。行高由 JS 按宽高和数量计算，
+     不再让固定工作区把首尾两行压扁或裁成“堆叠”状态。 */
+  #favoriteOverview.canvas-view{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    align-content:center!important;
+  }
+
+  #favoriteOverview.canvas-view.favorite-overview-scroll{
+    overflow-y:auto!important;
+    align-content:start!important;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+  }
+
+  #favoriteOverview .favorite-tile{
+    min-height:0!important;
+    height:var(--favorite-tile-height,120px)!important;
+    aspect-ratio:auto!important;
+  }
+
   @media (prefers-reduced-motion:reduce){
     .page-view,
     .canvas-view,
@@ -34122,6 +34147,123 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return true;
   }
 
+  function layoutFavoriteCanvasOverview(count){
+    const box=$('#favoriteOverview');
+    const wrap=$('.canvas-wrap');
+    if(!box || !wrap)return null;
+
+    const gap=8;
+    const padding=16;
+    const availableWidth=Math.max(
+      220,
+      Math.floor(wrap.clientWidth-padding)
+    );
+    const availableHeight=Math.max(
+      180,
+      Math.floor(wrap.clientHeight-padding)
+    );
+
+    if(!count){
+      box.style.gridTemplateColumns='1fr';
+      box.style.gridAutoRows='1fr';
+      box.style.removeProperty('--favorite-tile-height');
+      box.classList.remove('favorite-overview-scroll');
+      box.dataset.adaptiveLayout='empty';
+      return {cols:1,rows:1,tileHeight:availableHeight,scrolling:false};
+    }
+
+    // 同时参考横向宽度和纵向高度，而不是只按宽度猜列数。
+    // 评分会优先保留接近 2:1 的卡片，并选择能完整放入画布的组合。
+    const maxCols=Math.min(
+      count,
+      6,
+      Math.max(1,Math.floor((availableWidth+gap)/(166+gap)))
+    );
+
+    let best=null;
+
+    for(let cols=1;cols<=maxCols;cols++){
+      const rows=Math.ceil(count/cols);
+      const tileWidth=(availableWidth-gap*(cols-1))/cols;
+      const naturalHeight=tileWidth/2;
+      const verticalFit=(availableHeight-gap*(rows-1))/rows;
+      const tileHeight=Math.min(naturalHeight,verticalFit,300);
+
+      if(tileHeight<=0)continue;
+
+      const ratioQuality=Math.min(1,tileHeight/Math.max(1,naturalHeight));
+      const score=
+        tileHeight*(.52+.48*ratioQuality)+
+        cols*.01;
+
+      if(!best || score>best.score){
+        best={cols,rows,tileWidth,naturalHeight,tileHeight,score};
+      }
+    }
+
+    if(!best){
+      best={
+        cols:1,
+        rows:count,
+        tileWidth:availableWidth,
+        naturalHeight:availableWidth/2,
+        tileHeight:96,
+        score:0
+      };
+    }
+
+    let scrolling=false;
+
+    // 收藏特别多时不把图片无限压小；保持最低辨识高度，改由总览内部滚动。
+    if(best.tileHeight<82){
+      const cols=maxCols;
+      const rows=Math.ceil(count/cols);
+      const tileWidth=(availableWidth-gap*(cols-1))/cols;
+
+      best={
+        ...best,
+        cols,
+        rows,
+        tileWidth,
+        naturalHeight:tileWidth/2,
+        tileHeight:Math.max(82,Math.min(128,tileWidth/2))
+      };
+      scrolling=true;
+    }
+
+    const tileHeight=Math.max(1,Math.floor(best.tileHeight));
+
+    box.style.gridTemplateColumns=
+      `repeat(${best.cols},minmax(0,1fr))`;
+    box.style.gridAutoRows=`${tileHeight}px`;
+    box.style.setProperty('--favorite-tile-height',`${tileHeight}px`);
+    box.classList.toggle('favorite-overview-scroll',scrolling);
+    box.style.alignContent=scrolling?'start':'center';
+    box.dataset.adaptiveLayout=
+      `${best.cols}x${best.rows}@${tileHeight}`;
+
+    return {
+      cols:best.cols,
+      rows:best.rows,
+      tileHeight,
+      scrolling
+    };
+  }
+
+  let favoriteOverviewLayoutFrame=0;
+
+  function scheduleFavoriteOverviewLayout(){
+    cancelAnimationFrame(favoriteOverviewLayoutFrame);
+    favoriteOverviewLayoutFrame=requestAnimationFrame(()=>{
+      favoriteOverviewLayoutFrame=0;
+      if(!favoriteOverviewMode && currentCanvasPage!=='favorites')return;
+
+      const count=$$('#favoriteOverview > .favorite-tile').length;
+      layoutFavoriteCanvasOverview(count);
+    });
+  }
+
+
   function renderFavoriteCanvasOverview(){
     const box=$('#favoriteOverview');
     if(!box)return;
@@ -34136,38 +34278,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const n=list.length;
 
     if(!n){
-      box.style.gridTemplateColumns='1fr';
       box.innerHTML='<div class="favorite-empty">还没有收藏方案</div>';
+      layoutFavoriteCanvasOverview(0);
       return;
     }
-
-    const wrap=$('.canvas-wrap');
-    const available=Math.max(
-      220,
-      Math.floor((wrap?.getBoundingClientRect()?.width||900)-16)
-    );
-
-    const minTileWidth=280;
-    let cols=Math.max(
-      1,
-      Math.floor(
-        available/minTileWidth
-      )
-    );
-
-    cols=Math.min(cols,n,4);
-
-    while(
-      cols>1 &&
-      (available-(cols-1)*8)/cols<220
-    )cols--;
-
-    box.style.gridTemplateColumns=
-      `repeat(${cols},minmax(0,1fr))`;
-
-    box.style.width='100%';
-    box.style.maxWidth='100%';
-    box.style.gridAutoRows='auto';
 
     list.forEach((f,i)=>{
       const tile=
@@ -34198,7 +34312,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(svg){
         svg.setAttribute(
           'preserveAspectRatio',
-          'xMidYMid meet'
+          // 外框可以随窗口改变比例；SVG 只做整体纵向缩放，
+          // 内部各条纹的相对路数比例仍由原始 y / height 严格保持。
+          'none'
         );
 
         svg.setAttribute(
@@ -34229,6 +34345,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       box.appendChild(tile);
     });
+
+    layoutFavoriteCanvasOverview(n);
   }
 
 
@@ -34251,16 +34369,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return Math.max(300,Math.ceil(cardWidth/2+58));
     }
 
-    const overview=$('#favoriteOverview');
-    return Math.max(
-      260,
-      Math.ceil(
-        overview?.scrollHeight ||
-        overview?.getBoundingClientRect().height ||
-        currentHeight ||
-        520
-      )
-    );
+    // 收藏总览会在当前画布内按数量和宽高自适应，不再向外撑破工作区。
+    return Math.max(260,currentHeight||wrap.clientHeight||520);
   }
 
   function measureCanvasTargetHeight(mode,currentHeight){
@@ -34269,30 +34379,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     if(mode!=='favorites')return canvasModeHeight(mode,currentHeight);
 
-    const oldHeight=wrap.style.height;
-    const oldOverflow=wrap.style.overflow;
-
-    // 此时有遮罩挡住画面，可以安全进入最终布局测量真实高度。
-    wrap.style.height='auto';
-    wrap.style.overflow='hidden';
-
-    void wrap.offsetHeight;
-
-    const overview=$('#favoriteOverview');
-    const measured=Math.max(
-      260,
-      Math.ceil(
-        overview?.scrollHeight ||
-        overview?.getBoundingClientRect().height ||
-        currentHeight ||
-        520
-      )
-    );
-
-    wrap.style.height=oldHeight;
-    wrap.style.overflow=oldOverflow;
-
-    return measured;
+    layoutFavoriteCanvasOverview(state.favorites?.length||0);
+    return Math.max(260,currentHeight||wrap.clientHeight||520);
   }
 
   async function switchCanvasView(target){
@@ -36368,13 +36456,13 @@ ${sheets.join('\n')}
   $('#applySchemePreviewBtn').onclick=applySchemePreview;
   $('#clearSchemePreviewBtn').onclick=()=>clearSchemePreview();
 
-  window.addEventListener('resize',()=>{if(favoriteOverviewMode)renderFavoriteCanvasOverview();});
+  window.addEventListener('resize',scheduleFavoriteOverviewLayout);
   window.addEventListener('resize',()=>{
     $$('.palette-lib-name').forEach(fitPaletteLabel);
   });
   window.addEventListener('resize',()=>requestAnimationFrame(updateStripeSelectionMarkers));
   const favoriteResizeObserver=new ResizeObserver(()=>{
-    if(favoriteOverviewMode)renderFavoriteCanvasOverview();
+    scheduleFavoriteOverviewLayout();
   });
   const observedCanvasWrap=$('.canvas-wrap');
   if(observedCanvasWrap)favoriteResizeObserver.observe(observedCanvasWrap);

@@ -72,6 +72,84 @@ window.addEventListener('load',async()=>{
     );
     await wait(360);
 
+    const originalFavorites=deepClone(state.favorites);
+    const makeColor=(seed)=>'#'+((seed*2654435761)>>>0)
+      .toString(16).slice(-6).padStart(6,'0').toUpperCase();
+    window.resizeTo(1600,1000);
+    await wait(100);
+    state.favorites=Array.from({length:8},(_,index)=>
+      captureFavoriteEntry({
+        A:makeColor(index+11),
+        B:makeColor(index+71)
+      },'adaptive-layout')
+    );
+    renderFavoriteCanvasOverview();
+    await wait(50);
+
+    const wrapRect=document.querySelector('.canvas-wrap').getBoundingClientRect();
+    const adaptiveTiles=[...document.querySelectorAll('#favoriteOverview > .favorite-tile')];
+    const adaptiveRects=adaptiveTiles.map(tile=>tile.getBoundingClientRect());
+    const adaptiveHeights=adaptiveRects.map(rect=>rect.height);
+    const firstAdaptiveSvg=adaptiveTiles[0]?.querySelector('svg');
+    const firstRepeatBands=[...(firstAdaptiveSvg?.querySelectorAll(
+      'rect[data-stripe-key][data-repeat-index="0"]'
+    )||[])];
+    const bandHeightRatio=firstRepeatBands.length>=2
+      ? Number(firstRepeatBands[0].getAttribute('height'))/
+        Number(firstRepeatBands[1].getAttribute('height'))
+      : 0;
+    const adaptiveEight={
+      layout:document.querySelector('#favoriteOverview')?.dataset.adaptiveLayout||'',
+      count:adaptiveRects.length,
+      minHeight:Math.min(...adaptiveHeights),
+      maxHeight:Math.max(...adaptiveHeights),
+      allInside:adaptiveRects.every(rect=>
+        rect.top>=wrapRect.top-1 && rect.bottom<=wrapRect.bottom+1
+      ),
+      preserveAspectRatio:firstAdaptiveSvg?.getAttribute('preserveAspectRatio')||'',
+      bandHeightRatio,
+      scrolling:document.querySelector('#favoriteOverview')?.classList.contains('favorite-overview-scroll')||false
+    };
+
+    const adaptiveNodeMap=new Map(
+      adaptiveTiles.map(tile=>[tile.dataset.favoriteKey,tile])
+    );
+    window.resizeTo(1420,860);
+    await wait(120);
+    const resizedTiles=[...document.querySelectorAll('#favoriteOverview > .favorite-tile')];
+    const adaptiveResize={
+      layout:document.querySelector('#favoriteOverview')?.dataset.adaptiveLayout||'',
+      nodesPreserved:resizedTiles.every(tile=>
+        adaptiveNodeMap.get(tile.dataset.favoriteKey)===tile
+      ),
+      heightsEqual:(()=>{
+        const heights=resizedTiles.map(tile=>tile.getBoundingClientRect().height);
+        return Math.max(...heights)-Math.min(...heights)<1.5;
+      })()
+    };
+
+    state.favorites=Array.from({length:36},(_,index)=>
+      captureFavoriteEntry({
+        A:makeColor(index+131),
+        B:makeColor(index+251)
+      },'adaptive-overflow')
+    );
+    renderFavoriteCanvasOverview();
+    await wait(50);
+    const overflowTiles=[...document.querySelectorAll('#favoriteOverview > .favorite-tile')];
+    const overflowHeights=overflowTiles.map(tile=>tile.getBoundingClientRect().height);
+    const adaptiveOverflow={
+      layout:document.querySelector('#favoriteOverview')?.dataset.adaptiveLayout||'',
+      count:overflowTiles.length,
+      minHeight:Math.min(...overflowHeights),
+      maxHeight:Math.max(...overflowHeights),
+      scrolling:document.querySelector('#favoriteOverview')?.classList.contains('favorite-overview-scroll')||false
+    };
+
+    state.favorites=originalFavorites;
+    renderFavoriteCanvasOverview();
+    await wait(40);
+
     const originalDeleteAway=animateDeleteAway;
     const deleteCalls=[];
     animateDeleteAway=(elements,options)=>{
@@ -97,6 +175,9 @@ window.addEventListener('load',async()=>{
       firstReflowAnimations,
       thirdOverviewAnimations,
       existingOverviewAnimations,
+      adaptiveEight,
+      adaptiveResize,
+      adaptiveOverflow,
       removeAnimations,
       clearAnimations,
       favoritesAfterClear:state.favorites.length,
@@ -145,6 +226,19 @@ if(
   result.firstCardAnimations<1 ||
   result.firstCountAnimations<1 ||
   result.secondCardAnimations<1 ||
+  result.adaptiveEight?.count!==8 ||
+  !result.adaptiveEight?.allInside ||
+  result.adaptiveEight?.scrolling ||
+  result.adaptiveEight?.preserveAspectRatio!=="none" ||
+  Math.abs((result.adaptiveEight?.bandHeightRatio||0)-1.6)>.02 ||
+  !result.adaptiveResize?.nodesPreserved ||
+  !result.adaptiveResize?.heightsEqual ||
+  result.adaptiveEight?.maxHeight-result.adaptiveEight?.minHeight>1.5 ||
+  result.adaptiveEight?.minHeight<80 ||
+  result.adaptiveOverflow?.count!==36 ||
+  !result.adaptiveOverflow?.scrolling ||
+  result.adaptiveOverflow?.maxHeight-result.adaptiveOverflow?.minHeight>1.5 ||
+  result.adaptiveOverflow?.minHeight<80 ||
   result.removeAnimations<1 ||
   result.clearAnimations<1 ||
   result.favoritesAfterClear!==0 ||
