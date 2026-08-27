@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32;
 
@@ -18,8 +19,36 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--elevated-update", StringComparer.OrdinalIgnoreCase))
+        {
+            var targetPath = ArgumentValue(args, "--target");
+            var resultPath = ArgumentValue(args, "--result");
+            var result = string.IsNullOrWhiteSpace(targetPath)
+                ? new UpdateResult(false, "管理员更新进程没有收到软件位置。")
+                : UpdaterEngine.ApplyUpdate(targetPath, launchAfterUpdate: false);
+
+            if (!string.IsNullOrWhiteSpace(resultPath))
+            {
+                try
+                {
+                    File.WriteAllText(resultPath, JsonSerializer.Serialize(result));
+                }
+                catch { }
+            }
+
+            Environment.Exit(result.Success ? 0 : 1);
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
         Application.Run(new UpdaterForm());
+    }
+
+    private static string? ArgumentValue(string[] args, string name)
+    {
+        var index = Array.FindIndex(args, value =>
+            value.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
     }
 }
 
@@ -178,13 +207,22 @@ internal sealed class UpdaterForm : Form
         SetBusy(true, "正在校验升级包…");
 
         var progress = new Progress<string>(message => _status.Text = message);
-        var result = await Task.Run(() => UpdaterEngine.ApplyUpdate(_targetPath, progress));
+        var result = await Task.Run(() =>
+            UpdaterEngine.ApplyUpdate(_targetPath, progress, launchAfterUpdate: false));
+
+        if (result.RequiresElevation)
+        {
+            SetBusy(true, "当前位置需要系统授权，正在打开 Windows 管理员确认…");
+            result = await Task.Run(() =>
+                UpdaterEngine.ApplyUpdateElevated(_targetPath));
+        }
 
         SetBusy(false, result.Message);
         _browse.Enabled = true;
 
         if (result.Success)
         {
+            UpdaterEngine.LaunchUpdatedApp(_targetPath);
             _update.Text = "更新完成";
             MessageBox.Show(this, $"软件已经升级到 {UpdaterEngine.TargetVersion}，原有数据全部保留。", "更新完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Close();
@@ -204,7 +242,11 @@ internal sealed class UpdaterForm : Form
     }
 }
 
-internal readonly record struct UpdateResult(bool Success, string Message);
+internal readonly record struct UpdateResult(
+    bool Success,
+    string Message,
+    bool RequiresElevation = false
+);
 
 internal enum FileAvailability
 {
@@ -215,7 +257,7 @@ internal enum FileAvailability
 
 internal static class UpdaterEngine
 {
-    public const string TargetVersion = "1.0.7";
+    public const string TargetVersion = "1.0.8";
     private const string AppId = "com.kurokid.stripestudio";
     private const string ProductName = "条纹纺织调色";
     private const string RegistryPath = @"Software\Kurokid\StripeStudio";
@@ -361,9 +403,22 @@ internal static class UpdaterEngine
         }
     }
 
-    public static UpdateResult ApplyUpdate(string targetPath, IProgress<string>? progress = null)
+    public static UpdateResult ApplyUpdate(
+        string targetPath,
+        IProgress<string>? progress = null,
+        bool launchAfterUpdate = true)
     {
         if (!IsValidTarget(targetPath)) return new(false, "找不到有效的主程序，请重新选择。");
+
+        ClearReadOnlyAttribute(targetPath);
+
+        if (!DirectoryAllowsWrite(Path.GetDirectoryName(targetPath)!))
+        {
+            if (!IsAdministrator())
+                return new(false, "当前位置需要管理员权限，正在请求系统授权。", true);
+
+            TryRepairTargetAccess(targetPath);
+        }
 
         var tempRoot = Path.Combine(Path.GetTempPath(), $"StripeStudioUpdate-{Guid.NewGuid():N}");
         var payloadPath = Path.Combine(tempRoot, $"{ProductName}.exe");
@@ -383,15 +438,38 @@ internal static class UpdaterEngine
             var runningFound = CloseRunningAppIfPresent(targetPath, progress);
             var availability = WaitForAvailable(targetPath, TimeSpan.FromSeconds(runningFound ? 45 : 20));
             if (availability == FileAvailability.AccessDenied)
-                return new(false, "当前软件位置没有写入权限。请以管理员身份运行升级包，或把主程序移到普通文件夹后重试。");
+            {
+                if (!IsAdministrator())
+                    return new(false, "当前位置需要管理员权限，正在请求系统授权。", true);
+
+                progress?.Report("正在修复所选主程序的写入权限…");
+                TryRepairTargetAccess(targetPath);
+                availability = WaitForAvailable(targetPath, TimeSpan.FromSeconds(5));
+                if (availability == FileAvailability.AccessDenied)
+                    return new(false, "管理员进程仍无法访问所选主程序。请检查安全软件是否正在保护该文件。");
+            }
             if (availability == FileAvailability.InUse)
                 return new(false, runningFound
                     ? "检测到旧版进程仍未完全退出，请关闭条纹纺织调色后再试一次。"
                     : "主程序正被其他程序占用（例如聊天软件传输、杀毒扫描或文件预览）。请稍等片刻后重试。");
 
             progress?.Report("正在原位替换程序，用户数据保持不动…");
-            if (File.Exists(backupPath)) File.Delete(backupPath);
-            File.Move(targetPath, backupPath);
+            try
+            {
+                if (File.Exists(backupPath)) File.Delete(backupPath);
+                File.Move(targetPath, backupPath);
+            }
+            catch (UnauthorizedAccessException) when (IsAdministrator())
+            {
+                progress?.Report("正在取得所选主程序的替换权限…");
+                TryRepairTargetAccess(targetPath);
+                if (File.Exists(backupPath))
+                {
+                    TryRepairTargetAccess(backupPath);
+                    File.Delete(backupPath);
+                }
+                File.Move(targetPath, backupPath);
+            }
 
             try
             {
@@ -399,14 +477,29 @@ internal static class UpdaterEngine
                 if (!HashFile(targetPath).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
                     throw new IOException("写入后的程序校验失败");
 
-                progress?.Report("正在启动新版并确认结果…");
-                Process.Start(new ProcessStartInfo(targetPath) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(targetPath)! });
+                if (launchAfterUpdate)
+                {
+                    progress?.Report("正在启动新版并确认结果…");
+                    LaunchUpdatedApp(targetPath);
 
-                if (!WaitForVersion(TargetVersion, targetPath, TimeSpan.FromSeconds(30)))
-                    throw new IOException("新版启动确认超时");
+                    if (!WaitForVersion(TargetVersion, targetPath, TimeSpan.FromSeconds(30)))
+                        throw new IOException("新版启动确认超时");
+                }
+                else
+                {
+                    progress?.Report("正在确认新版文件…");
+                    var writtenVersion = FileVersionInfo.GetVersionInfo(targetPath).FileVersion ?? "";
+                    if (!writtenVersion.StartsWith(TargetVersion, StringComparison.OrdinalIgnoreCase))
+                        throw new IOException("写入后的版本号不正确");
+                }
 
                 File.Delete(backupPath);
-                return new(true, $"更新成功 · 已启动 {TargetVersion}");
+                return new(
+                    true,
+                    launchAfterUpdate
+                        ? $"更新成功 · 已启动 {TargetVersion}"
+                        : $"更新成功 · 已写入 {TargetVersion}"
+                );
             }
             catch (Exception error)
             {
@@ -421,7 +514,10 @@ internal static class UpdaterEngine
         }
         catch (UnauthorizedAccessException)
         {
-            return new(false, "没有权限替换该位置的程序。请把升级包以管理员身份运行后重试。");
+            if (!IsAdministrator())
+                return new(false, "当前位置需要管理员权限，正在请求系统授权。", true);
+
+            return new(false, "管理员进程仍无法替换该程序。请暂时关闭安全软件的文件保护后再试。");
         }
         catch (Exception error)
         {
@@ -430,6 +526,177 @@ internal static class UpdaterEngine
         finally
         {
             try { Directory.Delete(tempRoot, true); } catch { }
+        }
+    }
+
+    public static UpdateResult ApplyUpdateElevated(string targetPath)
+    {
+        var resultPath = Path.Combine(
+            Path.GetTempPath(),
+            $"StripeStudioElevatedResult-{Guid.NewGuid():N}.json"
+        );
+
+        try
+        {
+            var startInfo = CreateElevatedStartInfo(targetPath, resultPath);
+            using var process = Process.Start(startInfo);
+
+            if (process is null)
+                return new(false, "Windows 没有启动管理员更新进程。请重新点击更新。");
+
+            process.WaitForExit();
+
+            if (!File.Exists(resultPath))
+                return new(false, "管理员更新进程没有返回结果，请重新运行升级包。");
+
+            return JsonSerializer.Deserialize<UpdateResult>(File.ReadAllText(resultPath));
+        }
+        catch (System.ComponentModel.Win32Exception error)
+            when (error.NativeErrorCode == 1223)
+        {
+            return new(false, "已取消 Windows 管理员授权，软件没有发生改变。");
+        }
+        catch (Exception error)
+        {
+            return new(false, $"无法启动管理员更新进程。{error.Message}");
+        }
+        finally
+        {
+            try { File.Delete(resultPath); } catch { }
+        }
+    }
+
+    internal static ProcessStartInfo CreateElevatedStartInfo(
+        string targetPath,
+        string resultPath)
+    {
+        var executable = Environment.ProcessPath
+            ?? throw new InvalidOperationException("找不到升级包自身路径");
+
+        var info = new ProcessStartInfo(executable)
+        {
+            UseShellExecute = true,
+            Verb = "runas",
+            WorkingDirectory = AppContext.BaseDirectory
+        };
+
+        info.ArgumentList.Add("--elevated-update");
+        info.ArgumentList.Add("--target");
+        info.ArgumentList.Add(Path.GetFullPath(targetPath));
+        info.ArgumentList.Add("--result");
+        info.ArgumentList.Add(Path.GetFullPath(resultPath));
+        return info;
+    }
+
+    public static void LaunchUpdatedApp(string targetPath)
+    {
+        Process.Start(new ProcessStartInfo(targetPath)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(targetPath)!
+        });
+    }
+
+    private static bool IsAdministrator()
+    {
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(identity)
+                .IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void ClearReadOnlyAttribute(string targetPath)
+    {
+        try
+        {
+            var attributes = File.GetAttributes(targetPath);
+            if ((attributes & FileAttributes.ReadOnly) != 0)
+                File.SetAttributes(targetPath, attributes & ~FileAttributes.ReadOnly);
+        }
+        catch { }
+    }
+
+    private static bool DirectoryAllowsWrite(string directory)
+    {
+        var probe = Path.Combine(directory, $".stripe-update-write-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (File.Create(probe, 1, FileOptions.DeleteOnClose)) { }
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch
+        {
+            // 其他瞬时错误交给实际替换流程判断，不能误触发提权循环。
+            return true;
+        }
+        finally
+        {
+            try { File.Delete(probe); } catch { }
+        }
+    }
+
+    private static bool TryRepairTargetAccess(string targetPath)
+    {
+        if (!IsAdministrator()) return false;
+
+        ClearReadOnlyAttribute(targetPath);
+
+        var takeOwnership = RunWindowsTool(
+            "takeown.exe",
+            "/F", targetPath,
+            "/A"
+        );
+
+        var resetAcl = RunWindowsTool(
+            "icacls.exe",
+            targetPath,
+            "/reset",
+            "/C"
+        );
+
+        var grantAdministrators = RunWindowsTool(
+            "icacls.exe",
+            targetPath,
+            "/grant", "*S-1-5-32-544:(F)",
+            "/C"
+        );
+
+        ClearReadOnlyAttribute(targetPath);
+        return takeOwnership || resetAcl || grantAdministrators;
+    }
+
+    private static bool RunWindowsTool(string fileName, params string[] arguments)
+    {
+        try
+        {
+            var info = new ProcessStartInfo(fileName)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            foreach (var argument in arguments) info.ArgumentList.Add(argument);
+
+            using var process = Process.Start(info);
+            if (process is null) return false;
+            process.WaitForExit(15000);
+            return process.HasExited && process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -514,7 +781,10 @@ internal static class UpdaterEngine
         {
             try
             {
-                using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                // 这里只判断文件是否仍被进程占用，不要求旧 EXE 自身授予“写入内容”权限。
+                // 实际升级使用同目录原子移动/复制；旧实现用 ReadWrite 会把可正常替换的
+                // 只读程序误报成“没有权限”，即使管理员运行也会被提前拦住。
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
                 return FileAvailability.Ready;
             }
             catch (IOException) { Thread.Sleep(250); }
@@ -592,23 +862,43 @@ internal static class UpdaterEngine
             var target = Path.Combine(testRoot, $"{ProductName}.exe");
             var backup = $"{target}.update-backup";
             File.WriteAllText(target, "old-version-sentinel");
+            File.SetAttributes(target, File.GetAttributes(target) | FileAttributes.ReadOnly);
             var availabilityBefore = WaitForAvailable(target, TimeSpan.FromSeconds(1));
+            var readOnlyTargetAccepted = availabilityBefore == FileAvailability.Ready;
+            ClearReadOnlyAttribute(target);
             File.Move(target, backup);
             File.Copy(temp, target, true);
             var replacementPassed = File.Exists(backup)
                 && HashFile(target).Equals(expected, StringComparison.OrdinalIgnoreCase);
             File.Delete(backup);
 
+            var elevatedInfo = CreateElevatedStartInfo(
+                target,
+                Path.Combine(testRoot, "elevated-result.json")
+            );
+            var elevationFallbackWired =
+                elevatedInfo.UseShellExecute &&
+                elevatedInfo.Verb.Equals("runas", StringComparison.OrdinalIgnoreCase) &&
+                elevatedInfo.ArgumentList.Contains("--elevated-update") &&
+                elevatedInfo.ArgumentList.Contains("--target") &&
+                elevatedInfo.ArgumentList.Contains("--result");
+            var directoryWriteProbePassed = DirectoryAllowsWrite(testRoot);
+
             var found = FindInstalledApp();
             var result = new
             {
                 passed = expected.Equals(actual, StringComparison.OrdinalIgnoreCase)
                     && replacementPassed
-                    && availabilityBefore == FileAvailability.Ready,
+                    && readOnlyTargetAccepted
+                    && elevationFallbackWired
+                    && directoryWriteProbePassed,
                 embeddedPayloadHash = actual,
                 expectedHash = expected,
                 replacementTransactionPassed = replacementPassed,
                 unlockedFileDetectionPassed = availabilityBefore == FileAvailability.Ready,
+                readOnlyTargetAccepted,
+                elevationFallbackWired,
+                directoryWriteProbePassed,
                 discoveredTarget = found,
                 discoveredTargetValid = found is null || IsValidTarget(found),
                 dataDirectory = DataDirectory,
