@@ -27,6 +27,41 @@ window.addEventListener('load', async () => {
     const file = new File([bytes], '工作簿2.xlsx', {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
+    const probeZip = await JSZip.loadAsync(await file.arrayBuffer());
+    const [probeTheme, probeStrings, probeMetas] = await Promise.all([
+      excelParseTheme(probeZip),
+      excelParseSharedStrings(probeZip),
+      excelWorkbookSheets(probeZip),
+    ]);
+    const probeStyles = await excelParseStyles(probeZip, probeTheme);
+    const rawProbe = [];
+    for (const meta of probeMetas) {
+      const sheet = await excelParseSheet(
+        probeZip,
+        meta,
+        probeStrings,
+        probeStyles,
+      );
+      const contiguous = excelContiguousBlocks(sheet, 2);
+      const generic = excelAnalyzeSheet(sheet);
+      const visual = excelAnalyzeVisualCounterSheet(sheet);
+      rawProbe.push({
+        sheet: sheet.name,
+        usedBounds: sheet.usedBounds,
+        parseStats: sheet.parseStats,
+        contiguous,
+        generic: generic.map(block => ({
+          start: block.start,
+          end: block.end,
+          patternCols: block.patternCols,
+          schemeCount: block.schemes.length,
+        })),
+        visualSchemeCount: visual.reduce(
+          (sum, block) => sum + block.schemes.length,
+          0,
+        ),
+      });
+    }
     await excelCounterAnalyze(file);
     await settle();
     const productionBlocks = excelCounterState.blocks;
@@ -42,8 +77,12 @@ window.addEventListener('load', async () => {
       start: block.start,
       end: block.end,
       totalRow: block.totalRow,
+      visualGridCounter: !!block.visualGridCounter,
+      sourceBlockCount: block.sourceBlockCount || 0,
+      columnClusterCount: block.columnClusterCount || 0,
       schemes: (block.schemes || []).map(scheme => ({
         position: scheme.position,
+        col: scheme.col,
         text: scheme.countText,
         total: scheme.totalL
       }))
@@ -54,6 +93,7 @@ window.addEventListener('load', async () => {
         fileMeta: document.querySelector('#excelCounterFileMeta')?.textContent || '',
         activeBlockIndex: excelCounterState.activeBlockIndex,
         productionBlockCount: productionBlocks.length,
+        rawProbe,
       },
       blocks,
       outputBase64

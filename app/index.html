@@ -19655,7 +19655,7 @@
 
         <div class="excel-counter-intro">
           <b>独立工具</b>
-          <span>丢入生产条纹 Excel → 读取每个方案的路数列和色块列 → 按从上到下生成“黑色8L+米黄18L” → 读取底部总路数 → 导出与目标数格表相同的两张工作表。完全独立，不会改动当前条纹项目。</span>
+          <span>丢入条纹 Excel → 按实际填充格逐格读取深浅 → 自动识别上下排与左右分组 → 每组从左到右、从上到下数格 → 导出两张结果表。完全独立，不会改动当前条纹项目。</span>
         </div>
 
         <input id="excelCounterInput" class="hidden" type="file"
@@ -19665,7 +19665,7 @@
           <div class="excel-counter-drop-icon">XLSX</div>
           <div class="excel-counter-drop-copy">
             <b id="excelCounterFileName">选择或拖入 Excel</b>
-            <span id="excelCounterFileMeta">优先识别生产数格表；位置变化会按底部总路数行重新定位</span>
+            <span id="excelCounterFileMeta">不依赖固定位置；深色算黑，浅色或空白算米白</span>
           </div>
         </div>
 
@@ -20679,7 +20679,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // Self-closing styled cells are common in production sheets. Match
     // them first; otherwise the open/close branch can swallow the next
     // numeric cell and shift every count column by one.
-    const cellRe=/<c\b([^>]*?)\/>|<c\b([^>]*?)>([\s\S]*?)<\/c>/g;
+    const cellRe=/<(?:[A-Za-z_][\w.-]*:)?c\b([^>]*?)\/>|<(?:[A-Za-z_][\w.-]*:)?c\b([^>]*?)>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?c>/g;
     let match;
 
     while((match=cellRe.exec(text))){
@@ -20701,11 +20701,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const fill=styles.fills[fillId]||null;
 
       let value=null;
-      const vMatch=body.match(/<v>([\s\S]*?)<\/v>/);
+      const vMatch=body.match(
+        /<(?:[A-Za-z_][\w.-]*:)?v>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?v>/
+      );
+      const formulaMatch=
+        body.match(
+          /<(?:[A-Za-z_][\w.-]*:)?f(?:\s[^>]*)?>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/
+        );
+      const hasFormula=
+        /<(?:[A-Za-z_][\w.-]*:)?f(?:\s[^>]*)?(?:\/>|>)/.test(
+          body
+        );
+      const formula=
+        formulaMatch
+          ? decodeXml(formulaMatch[1]).trim()
+          : '';
 
       if(type==='inlineStr'){
         const pieces=[];
-        const tRe=/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g;
+        const tRe=/<(?:[A-Za-z_][\w.-]*:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?t>/g;
         let tm;
         while((tm=tRe.exec(body))){
           pieces.push(decodeXml(tm[1]));
@@ -20729,6 +20743,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         row:parts.row,
         col:parts.col,
         value,
+        formula,
+        hasFormula,
         styleIndex,
         fillId,
         fillHex:fill?.hex || null,
@@ -20749,7 +20765,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // Merge-aware lookup. Some production workbooks only style the
     // top-left cell of a merged color block; expand its visual meaning
     // without mutating the workbook or creating fake values.
-    const mergeRe=/<mergeCell\b[^>]*ref="([A-Z]+\d+):([A-Z]+\d+)"[^>]*\/?>(?:<\/mergeCell>)?/g;
+    const mergeRe=/<(?:[A-Za-z_][\w.-]*:)?mergeCell\b[^>]*ref="([A-Z]+\d+):([A-Z]+\d+)"[^>]*\/?>(?:<\/(?:[A-Za-z_][\w.-]*:)?mergeCell>)?/g;
     let mm;
 
     while((mm=mergeRe.exec(text))){
@@ -21592,8 +21608,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             excelCounterHexForFillKey(
               key
             )
-          )
+        )
       }));
+
+    const minLum=
+      Math.min(
+        ...items.map(item=>item.lum)
+      );
+    const maxLum=
+      Math.max(
+        ...items.map(item=>item.lum)
+      );
+
+    // 没有真正的深浅跨度时，不硬拆成两类。这样整款全深色、
+    // 全浅色或只有轻微灰阶差异时，仍能得到稳定结果。
+    if(
+      maxLum<.45 ||
+      minLum>=.45 ||
+      maxLum-minLum<.18
+    ){
+      const label=
+        (minLum+maxLum)/2>=.45
+          ? '白'
+          : '黑';
+
+      return new Map(
+        items.map(item=>[
+          item.key,
+          label
+        ])
+      );
+    }
 
     // Single fill: decide by brightness.
     if(items.length===1){
@@ -21875,11 +21920,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return `${
             item.repeats
           }×(${
-            item.runs
-              .map(
-                excelCounterFormatRun
-              )
-              .join(' + ')
+            excelCounterFormatCompressedRuns(
+              item.runs
+            )
           })`;
         }
 
@@ -22058,7 +22101,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ) || null;
   }
 
-  function excelProductionNumber(value){
+  function excelProductionNumber(
+    value,
+    allowZero=false
+  ){
     if(
       value===null ||
       value===undefined ||
@@ -22071,10 +22117,65 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     return (
       Number.isFinite(n) &&
-      n>0
+      (
+        allowZero
+          ? n>=0
+          : n>0
+      )
     )
       ? n
       : null;
+  }
+
+  function excelProductionFormulaRange(
+    cell
+  ){
+    const formula=
+      String(
+        cell?.formula || ''
+      ).trim();
+
+    if(!formula)return null;
+
+    const refs=[
+      ...formula.matchAll(
+        /\$?([A-Z]{1,3})\$?(\d+)/gi
+      )
+    ];
+
+    if(refs.length<2){
+      return null;
+    }
+
+    const first=refs[0];
+    const last=refs[refs.length-1];
+    const startCol=
+      excelColToNumber(
+        first[1]
+      );
+    const endCol=
+      excelColToNumber(
+        last[1]
+      );
+    const startRow=Number(first[2]);
+    const endRow=Number(last[2]);
+
+    if(
+      !startCol ||
+      startCol!==endCol ||
+      !Number.isFinite(startRow) ||
+      !Number.isFinite(endRow) ||
+      startRow>endRow ||
+      endRow>=Number(cell?.row||0)
+    ){
+      return null;
+    }
+
+    return {
+      col:startCol,
+      startRow,
+      endRow
+    };
   }
 
   function excelProductionRowDirectStats(
@@ -22082,6 +22183,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     row
   ){
     const numeric=[];
+    const formulaTotals=[];
     let fillCount=0;
 
     const minCol=
@@ -22116,6 +22218,39 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
       }
 
+      const formulaRange=
+        excelProductionFormulaRange(
+          cell
+        );
+
+      const formulaValue=
+        excelProductionNumber(
+          cell.value,
+          true
+        );
+
+      if(
+        cell.hasFormula &&
+        formulaRange &&
+        formulaValue!==null
+      ){
+        formulaTotals.push({
+          slotCol:col,
+          countCol:
+            formulaRange.col,
+          startRow:
+            formulaRange.startRow,
+          endRow:
+            formulaRange.endRow,
+          value:
+            Math.round(
+              formulaValue
+            ),
+          formula:
+            cell.formula
+        });
+      }
+
       if(cell.fillHex){
         fillCount++;
       }
@@ -22123,6 +22258,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     return {
       numeric,
+      formulaTotals,
       fillCount
     };
   }
@@ -22221,53 +22357,105 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           row
         );
 
-      // 生产表的“总路数行”会同时出现很多数字，
-      // 但这一行本身基本没有条纹填色。
-      if(
-        stats.numeric.length<4 ||
-        stats.fillCount>1
-      ){
+      // 通用生产表的总计行可能只有 1 个有效款式，其余槽位为
+      // SUM(...)=0。优先读取公式引用的实际路数列，不能再以
+      // “至少 4 个正数”作为文件格式条件。
+      if(stats.fillCount>1){
+        continue;
+      }
+
+      const formulaEntries=
+        stats.formulaTotals.filter(
+          item=>item.value>0
+        );
+
+      const directEntries=
+        stats.numeric.map(item=>({
+          slotCol:item.col,
+          countCol:item.col,
+          startRow:null,
+          endRow:row-1,
+          value:
+            Math.round(item.value),
+          formula:''
+        }));
+
+      const entries=
+        formulaEntries.length
+          ? formulaEntries
+          : directEntries;
+
+      if(!entries.length){
         continue;
       }
 
       let evidence=0;
 
-      stats.numeric.forEach(item=>{
+      entries.forEach(item=>{
         const rightHasFill=
-          item.col<maxRow &&
+          item.countCol<maxCol &&
           excelProductionColumnHasFillAbove(
             sheet,
             row,
-            item.col+1
+            item.countCol+1
+          );
+
+        const leftHasFill=
+          item.countCol>
+          (sheet.usedBounds?.minCol||1) &&
+          excelProductionColumnHasFillAbove(
+            sheet,
+            row,
+            item.countCol-1
           );
 
         const numericOnly=
           excelProductionColumnHasNumericRunAbove(
             sheet,
             row,
-            item.col
+            item.countCol
           );
 
         if(
           rightHasFill ||
+          leftHasFill ||
           numericOnly
         ){
           evidence++;
         }
       });
 
-      if(evidence<4){
+      if(
+        evidence<
+        Math.max(
+          1,
+          Math.ceil(
+            entries.length*.6
+          )
+        )
+      ){
         continue;
       }
 
       rows.push({
         row,
-        totals:new Map(
-          stats.numeric.map(item=>[
-            item.col,
-            Math.round(item.value)
-          ])
-        )
+        entries:
+          entries
+            .map(item=>({...item}))
+            .sort(
+              (a,b)=>
+                a.slotCol-b.slotCol
+            ),
+        slots:
+          stats.formulaTotals.length
+            ? stats.formulaTotals
+                .map(item=>({...item}))
+                .sort(
+                  (a,b)=>
+                    a.slotCol-b.slotCol
+                )
+            : entries
+                .map(item=>({...item}))
       });
     }
 
@@ -22626,41 +22814,48 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return [];
     }
 
-    // “位置”不是当前区块里第几个有效方案，
-    // 而是整张生产表的固定槽位。
-    // 所以先取所有区块出现过的路数列并集，再固定位置编号。
-    const slotCols=
-      [
-        ...new Set(
-          metaRows.flatMap(meta=>
-            [
-              ...meta.totals.keys()
-            ]
-          )
-        )
-      ]
-        .sort((a,b)=>a-b);
-
-    if(slotCols.length<4){
-      return [];
-    }
-
     const blocks=[];
 
     metaRows.forEach(
       (meta,blockIndex)=>{
+        const entries=
+          [...(meta.entries||[])]
+            .sort(
+              (a,b)=>
+                a.slotCol-b.slotCol
+            );
+
         const countCols=
           [
-            ...meta.totals.keys()
-          ]
-            .sort((a,b)=>a-b);
+            ...new Set(
+              entries.map(
+                item=>item.countCol
+              )
+            )
+          ].sort((a,b)=>a-b);
 
-        const start=
+        if(!countCols.length){
+          return;
+        }
+
+        const detectedStart=
           excelProductionFindBlockStart(
             sheet,
             meta.row,
             countCols
           );
+
+        const formulaStarts=
+          entries
+            .map(item=>
+              Number(item.startRow)
+            )
+            .filter(Number.isFinite);
+
+        const start=
+          formulaStarts.length
+            ? Math.min(...formulaStarts)
+            : detectedStart;
 
         const block={
           sheetName:sheet.name,
@@ -22681,22 +22876,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           patternCols:
             countCols,
           slotCols:
-            [...slotCols],
+            (meta.slots||[])
+              .map(item=>item.slotCol),
           schemes:[],
           productionGrid:true
         };
 
-        countCols.forEach(col=>{
-          const position=
-            slotCols.indexOf(col)+1;
-
+        entries.forEach((entry,index)=>{
           const scheme=
             excelProductionBuildScheme(
               sheet,
               block,
-              col,
-              position,
-              meta.totals.get(col)
+              entry.countCol,
+              index+1,
+              entry.value
             );
 
           if(scheme){
@@ -22712,7 +22905,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     );
 
-    // 至少需要多个方案，避免把普通 Excel 的某一行误判为生产数格表。
     const totalSchemes=
       blocks.reduce(
         (sum,block)=>
@@ -22720,7 +22912,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         0
       );
 
-    return totalSchemes>=4
+    return totalSchemes>=1
       ? blocks
       : [];
   }
@@ -22838,6 +23030,220 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return blocks;
   }
 
+  function excelCounterRiceWhiteRuns(
+    sequence
+  ){
+    const analyzed=
+      excelCounterAnalyzeBWSequence(
+        sequence,
+        sequence.length
+      );
+
+    return analyzed.runs.map(run=>({
+      name:
+        run.name==='黑'
+          ? '黑'
+          : '米白',
+      lanes:run.lanes
+    }));
+  }
+
+  function excelVisualColumnClusters(
+    blocks
+  ){
+    const cols=[
+      ...new Set(
+        blocks.flatMap(block=>
+          block.schemes.map(
+            scheme=>scheme.col
+          )
+        )
+      )
+    ].sort((a,b)=>a-b);
+
+    if(cols.length<2){
+      return cols.length
+        ? [cols]
+        : [];
+    }
+
+    const gaps=[];
+
+    for(let i=1;i<cols.length;i++){
+      gaps.push(
+        cols[i]-cols[i-1]
+      );
+    }
+
+    const sorted=[...gaps]
+      .sort((a,b)=>a-b);
+
+    const typicalGap=
+      sorted[
+        Math.floor(
+          (sorted.length-1)/2
+        )
+      ] || 1;
+
+    const splitGap=
+      Math.max(
+        typicalGap+1,
+        Math.ceil(
+          typicalGap*1.6
+        )
+      );
+
+    const clusters=[[cols[0]]];
+
+    for(let i=1;i<cols.length;i++){
+      if(
+        cols[i]-cols[i-1]>=
+        splitGap
+      ){
+        clusters.push([]);
+      }
+
+      clusters[
+        clusters.length-1
+      ].push(cols[i]);
+    }
+
+    return clusters;
+  }
+
+  function excelAnalyzeVisualCounterSheet(
+    sheet
+  ){
+    const rawBlocks=
+      excelAnalyzeSheet(sheet)
+        .filter(block=>
+          block.end-block.start+1>=8 &&
+          block.schemes.length
+        )
+        .sort(
+          (a,b)=>a.start-b.start
+        );
+
+    if(!rawBlocks.length){
+      return [];
+    }
+
+    const schemeCount=
+      rawBlocks.reduce(
+        (sum,block)=>
+          sum+block.schemes.length,
+        0
+      );
+
+    if(schemeCount<1){
+      return [];
+    }
+
+    const clusters=
+      excelVisualColumnClusters(
+        rawBlocks
+      );
+
+    const ordered=[];
+
+    clusters.forEach(cluster=>{
+      const allowed=
+        new Set(cluster);
+
+      rawBlocks.forEach(block=>{
+        block.schemes
+          .filter(scheme=>
+            allowed.has(
+              scheme.col
+            )
+          )
+          .sort(
+            (a,b)=>a.col-b.col
+          )
+          .forEach(scheme=>{
+            const fullSequence=
+              [
+                ...(
+                  scheme.displaySequence ||
+                  scheme.sequence ||
+                  []
+                )
+              ];
+
+            if(!fullSequence.length){
+              return;
+            }
+
+            const runs=
+              excelCounterRiceWhiteRuns(
+                fullSequence
+              );
+
+            const countText=
+              excelCounterFormatCompressedRuns(
+                runs
+              );
+
+            ordered.push({
+              ...scheme,
+              position:
+                ordered.length+1,
+              blockNumber:1,
+              declaredL:
+                fullSequence.length,
+              totalL:
+                fullSequence.length,
+              measuredTotal:
+                fullSequence.length,
+              countText,
+              productionRuns:
+                runs.map(run=>({...run})),
+              displaySequence:
+                fullSequence,
+              sequence:
+                fullSequence,
+              visualGridCounter:true
+            });
+          });
+      });
+    });
+
+    if(!ordered.length){
+      return [];
+    }
+
+    const starts=
+      rawBlocks.map(block=>block.start);
+
+    const ends=
+      rawBlocks.map(block=>block.end);
+
+    return [{
+      sheetName:sheet.name,
+      sheetPath:sheet.path,
+      blockIndex:0,
+      blockNumber:1,
+      start:Math.min(...starts),
+      end:Math.max(...ends),
+      rawEnd:Math.max(...ends),
+      totalRow:null,
+      headerMeta:{
+        raw:'',
+        material:sheet.name,
+        baseLabel:'',
+        expectedRows:null
+      },
+      patternCols:
+        clusters.flat(),
+      schemes:ordered,
+      visualGridCounter:true,
+      sourceBlockCount:
+        rawBlocks.length,
+      columnClusterCount:
+        clusters.length
+    }];
+  }
+
   async function parseStripeExcelFile(file){
     if(!window.JSZip){
       throw new Error(
@@ -22872,6 +23278,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     const allBlocks=[];
     let productionGridDetected=false;
+    let visualGridDetected=false;
 
     for(
       let i=0;
@@ -22888,28 +23295,42 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       if(!sheet)continue;
 
-      const productionBlocks=
-        excelAnalyzeProductionGridSheet(
+      const visualBlocks=
+        excelAnalyzeVisualCounterSheet(
           sheet
         );
 
-      if(productionBlocks.length){
+      if(visualBlocks.length){
+        visualGridDetected=true;
+
+        visualBlocks.forEach(
+          block=>
+            allBlocks.push(block)
+        );
+      }else{
+        const productionBlocks=
+          excelAnalyzeProductionGridSheet(
+            sheet
+          );
+
+        if(productionBlocks.length){
         productionGridDetected=true;
 
         productionBlocks.forEach(
           block=>
             allBlocks.push(block)
         );
-      }else{
-        const genericBlocks=
-          excelAnalyzeSheet(
-            sheet
-          );
+        }else{
+          const genericBlocks=
+            excelAnalyzeSheet(
+              sheet
+            );
 
-        genericBlocks.forEach(
-          block=>
-            allBlocks.push(block)
-        );
+          genericBlocks.forEach(
+            block=>
+              allBlocks.push(block)
+          );
+        }
       }
 
       await new Promise(resolve=>
@@ -22930,7 +23351,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
               sum+block.schemes.length,
             0
           ),
-        productionGridDetected
+        productionGridDetected,
+        visualGridDetected
       }
     };
   }
@@ -38126,6 +38548,21 @@ $('#addStripeBtn').onclick=()=>{
   function excelCounterBlockName(block,index){
     const meta=block.headerMeta||{};
 
+    if(block.visualGridCounter){
+      return [
+        block.sheetName,
+        block.sourceBlockCount>1
+          ? `${block.sourceBlockCount} 排`
+          : '',
+        block.columnClusterCount>1
+          ? `${block.columnClusterCount} 组`
+          : '',
+        `${block.schemes.length} 款`
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    }
+
     const title=[
       block.sheetName,
       meta.material,
@@ -38244,7 +38681,7 @@ $('#addStripeBtn').onclick=()=>{
       out.innerHTML=`
         <div class="excel-counter-empty">
           <b>没有可输出结果</b>
-          <span>没有识别到数格方案。生产表应包含“路数列 + 色块列”，底部有每个方案的总路数。</span>
+          <span>没有识别到连续的条纹填色区域。请确认每一格的深浅填充在 Excel 中可见。</span>
         </div>`;
       return;
     }
@@ -38268,7 +38705,11 @@ $('#addStripeBtn').onclick=()=>{
             ${
               block.productionGrid
                 ? ' · 数格生产表模式'
-                : ' · 通用识别模式'
+                : (
+                    block.visualGridCounter
+                      ? ' · 填色网格通用模式'
+                      : ' · 通用识别模式'
+                  )
             }
           </span>
         </div>
@@ -38419,7 +38860,7 @@ $('#addStripeBtn').onclick=()=>{
         </span>
         <div>
           <b>正在数条纹</b>
-          <span>定位总路数行 → 识别路数列 / 色块列 → 按区块和位置数格 → 整理输出</span>
+          <span>扫描实际填充格 → 识别上下排和左右分组 → 按视觉顺序数格 → 整理输出</span>
         </div>
       </div>`;
 
