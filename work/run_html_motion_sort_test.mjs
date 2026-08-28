@@ -25,6 +25,9 @@ window.addEventListener('load', async () => {
   const fake=(left,top)=>({getBoundingClientRect:()=>rect(left,top)});
 
   try {
+    // 等正式启动流程（含本地持久化恢复）结束后再注入测试状态，
+    // 避免异步恢复在测试中途把角色颜色覆盖回上一次运行。
+    await wait(500);
     const fullGrid=[fake(0,0),fake(112,0),fake(0,60),fake(112,60)];
     const oddGrid=[fake(0,0),fake(112,0),fake(0,60)];
 
@@ -104,9 +107,118 @@ window.addEventListener('load', async () => {
     const horizontalGap=cells.length>=2
       ? Math.round((cells[1].x-(cells[0].x+cells[0].w))*100)/100
       : null;
-    const verticalGap=cells.length>=3
-      ? Math.round((cells[2].y-(cells[0].y+cells[0].h))*100)/100
+    state.favorites=Array.from({length:14},(_,index)=>{
+      const favorite=deepClone([favoriteA,favoriteB,favoriteC,favoriteD][index%4]);
+      favorite.id='medium-layout-'+index;
+      favorite.name='中量方案 '+(index+1);
+      return favorite;
+    });
+    const mediumLayoutData=buildCurrentDisplayExportSvg();
+    const mediumCells=[...mediumLayoutData.svg.matchAll(/<g[^>]*data-export-card="[0-9]+"[^>]*data-card-x="([0-9.]+)"[^>]*data-card-y="([0-9.]+)"[^>]*data-card-width="([0-9.]+)"[^>]*data-card-height="([0-9.]+)"[^>]*>/g)]
+      .map(match=>({x:+match[1],y:+match[2],w:+match[3],h:+match[4]}));
+    const mediumFirstRowCount=mediumCells.filter(cell=>cell.y===mediumCells[0]?.y).length;
+
+    state.favorites=Array.from({length:17},(_,index)=>{
+      const favorite=deepClone([favoriteA,favoriteB,favoriteC,favoriteD][index%4]);
+      favorite.id='before-six-column-'+index;
+      favorite.name='六列前方案 '+(index+1);
+      return favorite;
+    });
+    const beforeSixData=buildCurrentDisplayExportSvg();
+    const beforeSixCells=[...beforeSixData.svg.matchAll(/<g[^>]*data-export-card="[0-9]+"[^>]*data-card-x="([0-9.]+)"[^>]*data-card-y="([0-9.]+)"[^>]*data-card-width="([0-9.]+)"[^>]*data-card-height="([0-9.]+)"[^>]*>/g)]
+      .map(match=>({x:+match[1],y:+match[2],w:+match[3],h:+match[4]}));
+    const beforeSixFirstRowCount=beforeSixCells.filter(cell=>cell.y===beforeSixCells[0]?.y).length;
+
+    state.favorites=Array.from({length:18},(_,index)=>{
+      const favorite=deepClone([favoriteA,favoriteB,favoriteC,favoriteD][index%4]);
+      favorite.id='six-column-threshold-'+index;
+      favorite.name='六列临界方案 '+(index+1);
+      return favorite;
+    });
+    const thresholdSixData=buildCurrentDisplayExportSvg();
+    const thresholdSixCells=[...thresholdSixData.svg.matchAll(/<g[^>]*data-export-card="[0-9]+"[^>]*data-card-x="([0-9.]+)"[^>]*data-card-y="([0-9.]+)"[^>]*data-card-width="([0-9.]+)"[^>]*data-card-height="([0-9.]+)"[^>]*>/g)]
+      .map(match=>({x:+match[1],y:+match[2],w:+match[3],h:+match[4]}));
+    const thresholdSixFirstRowCount=thresholdSixCells.filter(cell=>cell.y===thresholdSixCells[0]?.y).length;
+
+    state.favorites=Array.from({length:20},(_,index)=>{
+      const favorite=deepClone([favoriteA,favoriteB,favoriteC,favoriteD][index%4]);
+      favorite.id='six-column-'+index;
+      favorite.name='六列方案 '+(index+1);
+      return favorite;
+    });
+    const sixColumnData=buildCurrentDisplayExportSvg();
+    const sixCells=[...sixColumnData.svg.matchAll(/<g[^>]*data-export-card="[0-9]+"[^>]*data-card-x="([0-9.]+)"[^>]*data-card-y="([0-9.]+)"[^>]*data-card-width="([0-9.]+)"[^>]*data-card-height="([0-9.]+)"[^>]*>/g)]
+      .map(match=>({x:+match[1],y:+match[2],w:+match[3],h:+match[4]}));
+    const firstRowCount=sixCells.filter(cell=>cell.y===sixCells[0]?.y).length;
+    const lastRowCount=sixCells.filter(cell=>cell.y===sixCells[18]?.y).length;
+    const verticalGap=sixCells.length>=7
+      ? Math.round((sixCells[6].y-(sixCells[0].y+sixCells[0].h))*100)/100
       : null;
+    const lastRowCentered=sixCells.length===20 && Math.abs(
+      sixCells[18].x-
+      (sixColumnData.width-(sixCells[19].x+sixCells[19].w))
+    )<.02;
+    const equalCardWidths=sixCells.every(cell=>Math.abs(cell.w-sixCells[0].w)<.01);
+
+    state.schemes=Array.from({length:12},(_,index)=>({
+      mapping:index%2
+        ? {A:'#C79A62',B:'#B56F74'}
+        : {A:'#111111',B:'#EEEEEE'}
+    }));
+    state.schemeFilter='all';
+    renderSchemes();
+    await wait(60);
+    const compactCard=$('#schemes .scheme:not(.base-scheme)');
+    const compactFooter=compactCard?.querySelector('.scheme-footer');
+    const compactName=compactCard?.querySelector('.scheme-name-row');
+    const compactActions=compactCard?.querySelector('.scheme-action-row');
+    const compactCardHeight=compactCard?.getBoundingClientRect().height||0;
+    const controlsSameLine=!!compactName && !!compactActions &&
+      Math.abs(compactName.getBoundingClientRect().top-compactActions.getBoundingClientRect().top)<4;
+    const panelToolbar=$('.scheme-panel-toolbar');
+    const panelToolbarGroups=[
+      $('.scheme-panel-title'),
+      $('.scheme-filter-group'),
+      $('.scheme-action-toolbar'),
+      $('.scheme-manage-group')
+    ].filter(Boolean);
+    const panelToolbarTop=panelToolbarGroups[0]?.getBoundingClientRect().top||0;
+    const toolbarSingleLine=panelToolbarGroups.length===4 && panelToolbarGroups.every(el=>
+      Math.abs(el.getBoundingClientRect().top-panelToolbarTop)<4
+    );
+    currentCanvasPage='pattern';
+    setCanvasModeControl('pattern');
+    renderSvg();
+    await wait(30);
+    const usageBar=$('#roleUsageBar');
+    const usageTrack=usageBar?.querySelector('.role-usage-track');
+    const usageSegment=usageBar?.querySelector('.role-usage-segment');
+    const canvasWrap=$('.canvas-wrap');
+    const usageMetrics={
+      flexDirection:usageTrack ? getComputedStyle(usageTrack).flexDirection : '',
+      barLeft:usageBar?.getBoundingClientRect().left||0,
+      canvasRight:canvasWrap?.getBoundingClientRect().right||0,
+      barHeight:usageBar?.getBoundingClientRect().height||0,
+      canvasHeight:canvasWrap?.getBoundingClientRect().height||0,
+      segmentHeight:usageSegment?.style.height||''
+    };
+    const usageIsVertical=!!usageBar && !!usageTrack && !!usageSegment && !!canvasWrap &&
+      usageMetrics.flexDirection==='column' &&
+      usageMetrics.barLeft>=usageMetrics.canvasRight-1 &&
+      Math.abs(usageMetrics.barHeight-usageMetrics.canvasHeight)<3 &&
+      parseFloat(usageSegment.style.height)>0;
+    const repeatedApplyHidden=!compactCard?.querySelector('.scheme-apply-btn') ||
+      getComputedStyle(compactCard.querySelector('.scheme-apply-btn')).display==='none';
+    const panelControlsReady=document.body.dataset.schemePanelControls==='ready';
+    const expandButton=$('#expandSchemePanelBtn');
+    expandButton?.click();
+    await wait(40);
+    const panelExpanded=document.body.classList.contains('scheme-panel-expanded') &&
+      expandButton?.getAttribute('aria-pressed')==='true';
+    expandButton?.click();
+    await wait(40);
+    const panelRestored=!document.body.classList.contains('scheme-panel-expanded') &&
+      expandButton?.getAttribute('aria-pressed')==='false';
 
     const result={
       terminalOnLast,
@@ -131,6 +243,39 @@ window.addEventListener('load', async () => {
       horizontalGap,
       verticalGap,
       exportCells:cells.length,
+      mediumLayout:{
+        cards:mediumCells.length,
+        firstRowCount:mediumFirstRowCount,
+        cardWidth:mediumCells[0]?.w||0
+      },
+      beforeSixLayout:{
+        cards:beforeSixCells.length,
+        firstRowCount:beforeSixFirstRowCount
+      },
+      thresholdSixLayout:{
+        cards:thresholdSixCells.length,
+        firstRowCount:thresholdSixFirstRowCount
+      },
+      sixColumnLayout:{
+        cards:sixCells.length,
+        firstRowCount,
+        lastRowCount,
+        lastRowCentered,
+        equalCardWidths
+      },
+      schemeSpace:{
+        compactCardHeight,
+        controlsSameLine,
+        toolbarSingleLine,
+        usageIsVertical,
+        usageMetrics,
+        repeatedApplyHidden,
+        panelControlsReady,
+        panelExpanded,
+        panelRestored,
+        hasResizer:!!$('#schemePanelResizer'),
+        footerHeight:compactFooter?.getBoundingClientRect().height||0
+      },
       hasCardBorder:exportData.svg.includes('stroke="#C7CDD0"'),
       hasCardShadow:exportData.svg.includes('filter="url(#copyDisplayCardShadow)"'),
       cardCaptionCount:(exportData.svg.match(/data-export-card-caption=/g)||[]).length,
@@ -205,6 +350,28 @@ if (
   result.horizontalGap !== 12 ||
   result.verticalGap !== 68 ||
   result.exportCells !== 4 ||
+  result.mediumLayout.cards !== 14 ||
+  result.mediumLayout.firstRowCount !== 3 ||
+  result.mediumLayout.cardWidth < 500 ||
+  result.beforeSixLayout.cards !== 17 ||
+  result.beforeSixLayout.firstRowCount !== 4 ||
+  result.thresholdSixLayout.cards !== 18 ||
+  result.thresholdSixLayout.firstRowCount !== 6 ||
+  result.sixColumnLayout.cards !== 20 ||
+  result.sixColumnLayout.firstRowCount !== 6 ||
+  result.sixColumnLayout.lastRowCount !== 2 ||
+  !result.sixColumnLayout.lastRowCentered ||
+  !result.sixColumnLayout.equalCardWidths ||
+  result.schemeSpace.compactCardHeight > 124 ||
+  !result.schemeSpace.controlsSameLine ||
+  !result.schemeSpace.toolbarSingleLine ||
+  !result.schemeSpace.usageIsVertical ||
+  !result.schemeSpace.repeatedApplyHidden ||
+  !result.schemeSpace.panelControlsReady ||
+  !result.schemeSpace.panelExpanded ||
+  !result.schemeSpace.panelRestored ||
+  !result.schemeSpace.hasResizer ||
+  result.schemeSpace.footerHeight > 34 ||
   result.hasCardBorder ||
   !result.hasCardShadow ||
   result.cardCaptionCount !== 4 ||

@@ -19075,6 +19075,361 @@
       0 4px 10px rgba(50,39,32,.08)!important;
   }
 
+  /* ========================================================
+     正式版 — 自适应展示 + 高利用率方案工作区
+     ======================================================== */
+
+  .center{
+    --scheme-panel-height:clamp(220px,32vh,350px);
+    display:grid!important;
+    grid-template-rows:
+      minmax(190px,1fr)
+      8px
+      var(--scheme-panel-height)!important;
+    gap:0!important;
+    transition:grid-template-rows 360ms cubic-bezier(.32,.72,0,1)!important;
+  }
+
+  .center > .canvas-card{
+    grid-row:1!important;
+    min-height:0!important;
+    margin-bottom:5px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 58px!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    column-gap:8px!important;
+    transition:
+      padding 320ms cubic-bezier(.32,.72,0,1),
+      margin 320ms cubic-bezier(.32,.72,0,1)!important;
+  }
+
+  .center > .canvas-card > .canvas-head{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+  }
+
+  .center > .canvas-card > .canvas-wrap{
+    grid-column:1!important;
+    grid-row:2!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+
+  /* 颜色占比与画布并排，竖向高度严格对应实际路数比例。 */
+  .center > .canvas-card > .role-usage-bar{
+    grid-column:2!important;
+    grid-row:2!important;
+    align-self:stretch!important;
+    width:58px!important;
+    height:auto!important;
+    min-height:0!important;
+    margin:0!important;
+    overflow:visible!important;
+  }
+
+  .center > .canvas-card > .role-usage-bar.has-tiny-label{
+    margin:0!important;
+  }
+
+  .center > .canvas-card .role-usage-track{
+    display:flex!important;
+    flex-direction:column!important;
+    border-radius:10px!important;
+  }
+
+  .center > .canvas-card .role-usage-segment{
+    flex:none!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:1px!important;
+    transition:height 320ms cubic-bezier(.16,1,.3,1)!important;
+  }
+
+  .center > .canvas-card .role-usage-inline-label{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    white-space:nowrap;
+    line-height:1;
+    font-size:9px;
+  }
+
+  .center > .canvas-card .role-usage-tiny-label{
+    left:calc(34% + (var(--tiny-lane) * 32%))!important;
+    top:auto;
+    transform:translate(-50%,-50%);
+    min-width:max-content;
+    max-width:42px;
+    padding:2px 3px;
+    font-size:7.5px;
+    letter-spacing:-.03em;
+    box-shadow:
+      0 2px 5px rgba(17,24,39,.10),
+      inset 0 0 0 1px rgba(17,24,39,.08);
+  }
+
+  .center > .canvas-card .role-usage-tiny-label::after{
+    display:none!important;
+  }
+
+  .scheme-panel-resizer{
+    grid-row:2!important;
+    position:relative;
+    z-index:8;
+    width:100%;
+    height:8px;
+    padding:0;
+    border:0;
+    background:transparent;
+    cursor:ns-resize;
+    touch-action:none;
+  }
+
+  .scheme-panel-resizer::before{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:2px;
+    width:46px;
+    height:4px;
+    border-radius:999px;
+    background:rgba(83,96,101,.22);
+    transform:translateX(-50%);
+    transition:
+      width 160ms cubic-bezier(.16,1,.3,1),
+      background-color 160ms ease!important;
+  }
+
+  .scheme-panel-resizer:hover::before,
+  .scheme-panel-resizer.dragging::before{
+    width:64px;
+    background:rgba(83,96,101,.48);
+  }
+
+  .center > .bottom-card{
+    grid-row:3!important;
+    min-height:0!important;
+    max-height:none!important;
+    height:auto!important;
+    flex:none!important;
+    margin-top:5px!important;
+    padding:8px 9px 8px!important;
+  }
+
+  body.scheme-panel-expanded .center{
+    grid-template-rows:
+      0px
+      8px
+      minmax(0,1fr)!important;
+  }
+
+  body.scheme-panel-resizing .center{
+    transition:none!important;
+    user-select:none!important;
+  }
+
+  body.scheme-panel-expanded .center > .canvas-card{
+    min-height:0!important;
+    padding-top:0!important;
+    padding-bottom:0!important;
+    margin-bottom:0!important;
+    pointer-events:none!important;
+  }
+
+  body.scheme-panel-expanded .scheme-panel-resizer{
+    cursor:s-resize;
+  }
+
+  #expandSchemePanelBtn[aria-pressed="true"]{
+    color:#fff!important;
+    background:#414b4e!important;
+  }
+
+  .center > .bottom-card > .scheme-panel-toolbar{
+    min-height:34px!important;
+    margin-bottom:4px!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:none;
+    overscroll-behavior-x:contain;
+  }
+
+  .center > .bottom-card > .scheme-panel-toolbar::-webkit-scrollbar{
+    display:none;
+  }
+
+  .center > .bottom-card > .scheme-panel-toolbar .muted:not(.scheme-count-chip){
+    display:none!important;
+  }
+
+  .scheme-panel-title,
+  .scheme-filter-group,
+  .scheme-action-toolbar,
+  .scheme-manage-group{
+    flex:0 0 auto!important;
+    white-space:nowrap!important;
+  }
+
+  .scheme-panel-title{
+    display:flex!important;
+    align-items:center!important;
+    min-height:30px!important;
+    padding:0 4px!important;
+  }
+
+  .scheme-action-toolbar{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+    gap:4px!important;
+  }
+
+  .scheme-panel-toolbar .scheme-filter-group,
+  .scheme-panel-toolbar .scheme-manage-group,
+  .scheme-panel-toolbar .scheme-action-group{
+    min-height:30px!important;
+    padding:2px!important;
+    gap:3px!important;
+  }
+
+  .scheme-panel-toolbar .btn,
+  .scheme-panel-toolbar select{
+    height:28px!important;
+    min-height:28px!important;
+  }
+
+  .scheme-panel-toolbar .scheme-count-chip{
+    min-width:auto!important;
+    padding:3px 6px!important;
+  }
+
+  /* 宽面板固定六列；面板收窄时按自身宽度降列，不依赖屏幕缩放。 */
+  #schemes{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    grid-auto-rows:max-content!important;
+    gap:7px!important;
+    padding:3px 11px 10px 2px!important;
+  }
+
+  #schemes .scheme{
+    display:grid!important;
+    grid-template-rows:74px 30px!important;
+    min-height:114px!important;
+    height:114px!important;
+    padding:5px!important;
+    border-radius:10px!important;
+  }
+
+  #schemes .scheme-preview-frame{
+    height:74px!important;
+    min-height:74px!important;
+    border-radius:7px!important;
+  }
+
+  #schemes .scheme-footer{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-rows:30px!important;
+    align-items:center!important;
+    gap:4px!important;
+    height:30px!important;
+    padding-top:3px!important;
+  }
+
+  #schemes .scheme-name-row{
+    height:30px!important;
+  }
+
+  #schemes .scheme-name-text,
+  #schemes .base-scheme-label{
+    font-size:10px!important;
+  }
+
+  #schemes .scheme-favorite-order-grip{
+    width:20px!important;
+    min-width:20px!important;
+    height:22px!important;
+    margin-left:2px!important;
+    border-radius:6px!important;
+  }
+
+  /* 预览图本身已经是“应用”入口，卡片底部不再重复占一个按钮。 */
+  #schemes .scheme-action-row{
+    display:grid!important;
+    grid-template-columns:28px 28px!important;
+    gap:3px!important;
+    width:59px!important;
+    min-width:59px!important;
+    height:28px!important;
+  }
+
+  #schemes .scheme-action-row > *{
+    height:28px!important;
+    min-height:28px!important;
+  }
+
+  #schemes .scheme-apply-btn{
+    display:none!important;
+  }
+
+  #schemes .scheme-favorite-btn,
+  #schemes .compare-check{
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    padding:0!important;
+  }
+
+  #schemes .compare-check{
+    grid-template-columns:13px!important;
+  }
+
+  #schemes .compare-check-text{
+    display:none!important;
+  }
+
+  #schemes .scheme-action-row-base{
+    display:grid!important;
+    grid-template-columns:minmax(54px,72px)!important;
+    width:auto!important;
+    min-width:54px!important;
+  }
+
+  #schemes .base-restore-btn{
+    display:flex!important;
+    width:100%!important;
+    min-width:54px!important;
+    height:28px!important;
+  }
+
+  @container scheme-panel (max-width:900px){
+    #schemes{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  }
+
+  @container scheme-panel (max-width:730px){
+    #schemes{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  }
+
+  @container scheme-panel (max-width:560px){
+    #schemes{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  }
+
+  @container scheme-panel (max-width:410px){
+    #schemes{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  }
+
+  @media (max-height:700px){
+    .center{
+      --scheme-panel-height:190px;
+      grid-template-rows:minmax(155px,1fr) 8px var(--scheme-panel-height)!important;
+    }
+  }
+
   @media (prefers-reduced-motion:reduce){
     .page-view,
     .canvas-view,
@@ -19089,6 +19444,10 @@
     .swatch,
     .library-resource-row,
     .library-search-results{
+      transition:none!important;
+    }
+
+    .center{
       transition:none!important;
     }
   }
@@ -19383,12 +19742,23 @@
         <div id="roleUsageBar" class="role-usage-bar" title="当前单循环各颜色角色的路数占比"></div>
       </div>
 
+      <button
+        class="scheme-panel-resizer"
+        id="schemePanelResizer"
+        type="button"
+        title="上下拖动调整方案区高度；双击恢复默认"
+        aria-label="调整方案区高度"></button>
+
       <div class="bottom-card">
-        <div class="canvas-head">
-          <div>
+        <div class="canvas-head scheme-panel-toolbar">
+          <div class="scheme-panel-title">
             <b>配色方案</b>
             <span class="muted">点击方案图片会直接应用；误点可用顶部“撤销”恢复。★ 收藏会保存为独立快照。</span>
           </div>
+          <span class="scheme-filter-group">
+            <button class="btn small ghost" id="showAllSchemesBtn">灵感库</button>
+            <button class="btn small ghost" id="showFavoritesBtn">全部方案</button>
+          </span>
           <div class="toolbar scheme-action-toolbar">
             <span class="scheme-action-group scheme-generate-actions">
               <select id="schemeCount">
@@ -19403,15 +19773,10 @@
               <button class="btn nav" id="compareBtn">对比已选</button>
             </span>
           </div>
-        </div>
-        <div class="fav-bar scheme-filter-bar">
-          <span class="scheme-filter-group">
-            <button class="btn small ghost" id="showAllSchemesBtn">灵感库</button>
-            <button class="btn small ghost" id="showFavoritesBtn">全部方案</button>
-          </span>
           <span class="scheme-manage-group">
             <button class="btn small danger" id="clearFavoritesBtn">清空收藏</button>
             <span class="muted scheme-count-chip" id="favoriteCount">收藏 0 套</span>
+            <button class="btn small ghost" id="expandSchemePanelBtn" type="button" aria-pressed="false">展开方案</button>
           </span>
         </div>
         <div class="schemes" id="schemes"></div>
@@ -32138,12 +32503,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const box=$('#roleUsageBar');
     if(!box)return;
 
+    const previousTrackHeight=
+      box.querySelector('.role-usage-track')
+        ?.getBoundingClientRect().height || 0;
+
     const previousSegments=new Map(
       [...box.querySelectorAll('.role-usage-segment')]
         .map(el=>[
           el.dataset.role,
           {
-            percent:Number(el.dataset.percent)||parseFloat(el.style.width)||0
+            percent:previousTrackHeight>0
+              ? el.getBoundingClientRect().height/previousTrackHeight*100
+              : Number(el.dataset.percent)||parseFloat(el.style.height)||0
           }
         ])
     );
@@ -32152,7 +32523,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       [...box.querySelectorAll('.role-usage-tiny-label')]
         .map(el=>[
           el.dataset.role,
-          parseFloat(el.style.left)||0
+          parseFloat(el.style.top)||0
         ])
     );
 
@@ -32247,7 +32618,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           'style',
           `${favoriteFillPreviewStyle(
             favoriteEntry.fills?.[r]
-          )};width:${percent}%`
+          )};width:100%;height:${percent}%`
         );
       }else{
         const ref=
@@ -32258,7 +32629,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         seg.setAttribute(
           'style',
-          `${fillPreviewStyle(ref)};width:${percent}%`
+          `${fillPreviewStyle(ref)};width:100%;height:${percent}%`
         );
       }
 
@@ -32338,7 +32709,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         tiny.dataset.role=r;
 
-        tiny.style.left=
+        tiny.style.top=
           `${safeCenter}%`;
 
         tiny.style.setProperty(
@@ -32358,7 +32729,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cursor+=percent;
     });
 
-    // 宽度关键帧直接在新节点上启动，不等待下一次整帧重绘，
+    // 高度关键帧直接在新节点上启动，不等待下一次整帧重绘，
     // 避免先闪出最终比例、下一帧又跳回旧比例。
     {
       const segments=[
@@ -32367,29 +32738,35 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         )
       ];
 
+      // 首次显示、角色新增或角色删除时直接使用完整比例，避免动画过程中
+      // 各段总和暂时小于 100%，在竖条底部露出一块空白。只有同一组角色
+      // 的比例发生变化时，才做连续的高度插值，此时每一帧总和都保持 100%。
+      const canMorphSegments=
+        previousSegments.size===segments.length &&
+        segments.every(el=>previousSegments.has(el.dataset.role));
+
       segments.forEach((el,index)=>{
         const role=el.dataset.role;
         const nextPercent=
           Number(el.dataset.percent)||0;
 
         const old=previousSegments.get(role);
-        const fromPercent=old
-          ? old.percent
-          : Math.min(2,nextPercent);
+        const fromPercent=old?.percent ?? nextPercent;
 
         if(
+          !canMorphSegments ||
           Math.abs(fromPercent-nextPercent)<.05 ||
           typeof el.animate!=='function'
         )return;
 
         el.animate(
           [
-            {width:`${fromPercent}%`},
+            {height:`${fromPercent}%`},
             {
-              width:`${nextPercent}%`,
+              height:`${nextPercent}%`,
               offset:.82
             },
-            {width:`${nextPercent}%`}
+            {height:`${nextPercent}%`}
           ],
           {
             duration:360,
@@ -32404,19 +32781,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           '.role-usage-tiny-label'
         )
       ].forEach((el,index)=>{
-        const nextLeft=parseFloat(el.style.left)||0;
-        const oldLeft=
+        const nextTop=parseFloat(el.style.top)||0;
+        const oldTop=
           previousTinyLabels.get(el.dataset.role);
 
         el.animate(
           [
             {
-              left:`${oldLeft ?? nextLeft}%`,
-              transform:'translate(-50%,3px) scale(.94)'
+              top:`${oldTop ?? nextTop}%`,
+              transform:'translate(-50%,-50%) scale(.94)'
             },
             {
-              left:`${nextLeft}%`,
-              transform:'translate(-50%,0) scale(1)'
+              top:`${nextTop}%`,
+              transform:'translate(-50%,-50%) scale(1)'
             }
           ],
           {
@@ -33732,10 +34109,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }else{
       const n=state.favorites.length;
 
-      let cols=1;
-      if(n>=2)cols=2;
-      if(n>=7)cols=3;
-      if(n>=16)cols=4;
+      // 收藏数量少时维持旧版的大画幅比例；只有内容足够多，才逐级提高列数。
+      // 这样一眼能看清每条条纹，同时大量方案仍能在一张图里高效总览。
+      const cols=
+        n>=18 ? 6 :
+        n>=16 ? 4 :
+        n>=7  ? 3 :
+        n>=2  ? 2 : 1;
 
       // 复制收藏总览时横向保持紧凑，纵向留出略明显但不过宽的呼吸缝。
       // 色条数量再多，相邻两行也不会视觉粘连成同一张图。
@@ -33748,9 +34128,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       height=Math.ceil(contentTop+rows*cellH+(rows-1)*rowGap+margin);
 
       state.favorites.forEach((f,i)=>{
-        const col=i%cols;
         const row=Math.floor(i/cols);
-        const x=margin+col*(cellW+columnGap);
+        const rowStart=row*cols;
+        const rowCount=Math.min(cols,n-rowStart);
+        const col=i-rowStart;
+        const rowWidth=rowCount*cellW+Math.max(0,rowCount-1)*columnGap;
+        const rowOffset=(contentWidth-rowWidth)/2;
+        const x=margin+rowOffset+col*(cellW+columnGap);
         const y=contentTop+row*(cellH+rowGap);
 
         content+=`
@@ -35825,7 +36209,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
         );
 
-        await outgoingMotion.finished.catch(()=>{});
+        // 后台窗口、显卡切换或面板高度刚调整时，个别 WebView 会延后
+        // finished 事件；超时兜底保证筛选操作永远不会把界面锁死。
+        await Promise.race([
+          outgoingMotion.finished.catch(()=>{}),
+          new Promise(resolve=>setTimeout(resolve,300))
+        ]);
       }
 
       // 先用内联位移接住旧页的最终帧，再撤销旧动画并换内容；
@@ -35853,7 +36242,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
         );
 
-        await incomingMotion.finished.catch(()=>{});
+        await Promise.race([
+          incomingMotion.finished.catch(()=>{}),
+          new Promise(resolve=>setTimeout(resolve,410))
+        ]);
       }
 
       syncInterfaceMotionBaseline();
@@ -36984,6 +37376,146 @@ ${sheets.join('\n')}
       };
       box.appendChild(d);
     });
+  }
+
+  const SCHEME_PANEL_HEIGHT_KEY='stripeStudio.schemePanelHeight.v1';
+
+  function setSchemePanelExpanded(expanded,{animate=true}={}){
+    const next=!!expanded;
+    const button=$('#expandSchemePanelBtn');
+
+    if(!animate){
+      document.body.classList.add('scheme-panel-resizing');
+    }
+
+    document.body.classList.toggle('scheme-panel-expanded',next);
+    document.body.dataset.schemePanelExpanded=next?'1':'0';
+
+    if(button){
+      button.setAttribute('aria-pressed',String(next));
+      button.textContent=next?'返回画布':'展开方案';
+      button.title=next?'恢复主画布与方案区':'让方案区占满中央工作区';
+    }
+
+    if(!animate){
+      requestAnimationFrame(()=>{
+        document.body.classList.remove('scheme-panel-resizing');
+      });
+    }
+
+    requestAnimationFrame(scheduleFavoriteOverviewLayout);
+  }
+
+  function installSchemePanelSpaceControls(){
+    const center=$('.center');
+    const resizer=$('#schemePanelResizer');
+    const expandButton=$('#expandSchemePanelBtn');
+
+    if(!center || !resizer || !expandButton)return;
+
+    const storedHeight=Number(
+      localStorage.getItem(SCHEME_PANEL_HEIGHT_KEY)
+    );
+
+    if(Number.isFinite(storedHeight) && storedHeight>=170){
+      center.style.setProperty(
+        '--scheme-panel-height',
+        `${Math.round(storedHeight)}px`
+      );
+    }
+
+    const setHeightFromPointer=clientY=>{
+      const bounds=center.getBoundingClientRect();
+      const minHeight=Math.min(190,Math.max(150,bounds.height*.25));
+      const maxHeight=Math.max(
+        minHeight,
+        bounds.height-170
+      );
+      const next=Math.max(
+        minHeight,
+        Math.min(maxHeight,bounds.bottom-clientY-4)
+      );
+
+      center.style.setProperty(
+        '--scheme-panel-height',
+        `${Math.round(next)}px`
+      );
+      document.body.dataset.schemePanelHeight=String(Math.round(next));
+      return next;
+    };
+
+    let latestY=0;
+    let frame=0;
+    let activePointer=null;
+    let latestHeight=storedHeight||0;
+
+    const flushPointer=()=>{
+      frame=0;
+      latestHeight=setHeightFromPointer(latestY);
+    };
+
+    resizer.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      event.preventDefault();
+
+      if(document.body.classList.contains('scheme-panel-expanded')){
+        setSchemePanelExpanded(false,{animate:false});
+      }
+
+      activePointer=event.pointerId;
+      latestY=event.clientY;
+      resizer.setPointerCapture?.(event.pointerId);
+      resizer.classList.add('dragging');
+      document.body.classList.add('scheme-panel-resizing');
+      flushPointer();
+    });
+
+    resizer.addEventListener('pointermove',event=>{
+      if(activePointer!==event.pointerId)return;
+      latestY=event.clientY;
+      if(!frame)frame=requestAnimationFrame(flushPointer);
+    });
+
+    const finishResize=event=>{
+      if(activePointer===null)return;
+      if(event?.pointerId!==undefined && event.pointerId!==activePointer)return;
+      if(frame){
+        cancelAnimationFrame(frame);
+        flushPointer();
+      }
+      try{resizer.releasePointerCapture?.(activePointer);}catch(_){}
+      activePointer=null;
+      resizer.classList.remove('dragging');
+      document.body.classList.remove('scheme-panel-resizing');
+
+      if(Number.isFinite(latestHeight) && latestHeight>0){
+        localStorage.setItem(
+          SCHEME_PANEL_HEIGHT_KEY,
+          String(Math.round(latestHeight))
+        );
+      }
+
+      requestAnimationFrame(scheduleFavoriteOverviewLayout);
+    };
+
+    resizer.addEventListener('pointerup',finishResize);
+    resizer.addEventListener('pointercancel',finishResize);
+    resizer.addEventListener('dblclick',event=>{
+      event.preventDefault();
+      center.style.removeProperty('--scheme-panel-height');
+      localStorage.removeItem(SCHEME_PANEL_HEIGHT_KEY);
+      delete document.body.dataset.schemePanelHeight;
+      setSchemePanelExpanded(false);
+    });
+
+    expandButton.addEventListener('click',()=>{
+      setSchemePanelExpanded(
+        !document.body.classList.contains('scheme-panel-expanded')
+      );
+    });
+
+    document.body.dataset.schemePanelControls='ready';
+    setSchemePanelExpanded(false,{animate:false});
   }
 
   // events
@@ -39721,6 +40253,7 @@ $('#addStripeBtn').onclick=()=>{
   async function initializeStripeStudio(){
     purgePointerSortArtifacts();
     installUniversalAppleMotion();
+    installSchemePanelSpaceControls();
     await bootstrapDurableVault();
     applyRandomStripeSettingsToUI();
     loadLocal();

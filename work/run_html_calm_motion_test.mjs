@@ -98,16 +98,30 @@ setTimeout(async()=>{
     renderAll();
     await wait(28);
 
+    // 角色集合不变、仅比例变化时，竖向占比条应做连续高度插值；
+    // 首次出现或角色集合变化则直接完整显示，避免露出空白。
+    motionLog.length=0;
+    state.stripes=[
+      {lanes:10,role:'C'},
+      {lanes:3,role:'B'},
+      {lanes:5,role:'A'},
+      {lanes:7,role:'C'},
+      {lanes:4,role:'B'},
+      {lanes:5,role:'A'}
+    ];
+    renderAll();
+    await wait(28);
+
     const usageSegments=[...document.querySelectorAll('#roleUsageBar .role-usage-segment')];
     const usageEntries=motionLog.filter(entry=>
       entry.element.classList?.contains('role-usage-segment')
     );
-    const usageWidthFrames=usageEntries.flatMap(entry=>entry.keyframes);
+    const usageHeightFrames=usageEntries.flatMap(entry=>entry.keyframes);
     const usageResult={
       segmentCount:usageSegments.length,
       animationCount:usageEntries.length,
-      hasWidthMotion:usageWidthFrames.some(frame=>frame.width!==undefined && frame.width!==''),
-      hasOpacityFade:hasOpacityFade(usageWidthFrames)
+      hasHeightMotion:usageHeightFrames.some(frame=>frame.height!==undefined && frame.height!==''),
+      hasOpacityFade:hasOpacityFade(usageHeightFrames)
     };
 
     const calmTargets={
@@ -300,7 +314,7 @@ if(
   result.controlGeometry.compareScrollWidth>result.controlGeometry.compareWidth+2 ||
   result.usageResult.segmentCount<2 ||
   result.usageResult.animationCount<1 ||
-  !result.usageResult.hasWidthMotion ||
+  !result.usageResult.hasHeightMotion ||
   result.usageResult.hasOpacityFade ||
   result.calmResult.sidebarFade ||
   result.calmResult.canvasFade ||
