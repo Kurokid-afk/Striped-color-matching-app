@@ -194,6 +194,16 @@ window.addEventListener('load', async () => {
     const usageTrack=usageBar?.querySelector('.role-usage-track');
     const usageSegment=usageBar?.querySelector('.role-usage-segment');
     const canvasWrap=$('.canvas-wrap');
+    const patternSvg=$('#patternSvg');
+    const patternBands=[...document.querySelectorAll('#patternSvg [data-stripe-key][data-repeat-index]')];
+    const patternRect=patternSvg?.getBoundingClientRect();
+    const bandRects=patternBands.map(el=>el.getBoundingClientRect());
+    const patternContentTop=bandRects.length ? Math.min(...bandRects.map(rect=>rect.top)) : 0;
+    const patternContentBottom=bandRects.length ? Math.max(...bandRects.map(rect=>rect.bottom)) : 0;
+    const patternFillsCanvas=!!patternRect && bandRects.length>0 &&
+      patternSvg.getAttribute('preserveAspectRatio')==='none' &&
+      Math.abs(patternContentTop-patternRect.top)<2 &&
+      Math.abs(patternContentBottom-patternRect.bottom)<2;
     const usageMetrics={
       flexDirection:usageTrack ? getComputedStyle(usageTrack).flexDirection : '',
       barLeft:usageBar?.getBoundingClientRect().left||0,
@@ -269,6 +279,7 @@ window.addEventListener('load', async () => {
         toolbarSingleLine,
         usageIsVertical,
         usageMetrics,
+        patternFillsCanvas,
         repeatedApplyHidden,
         panelControlsReady,
         panelExpanded,
@@ -366,6 +377,7 @@ if (
   !result.schemeSpace.controlsSameLine ||
   !result.schemeSpace.toolbarSingleLine ||
   !result.schemeSpace.usageIsVertical ||
+  !result.schemeSpace.patternFillsCanvas ||
   !result.schemeSpace.repeatedApplyHidden ||
   !result.schemeSpace.panelControlsReady ||
   !result.schemeSpace.panelExpanded ||

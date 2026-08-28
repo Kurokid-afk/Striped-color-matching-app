@@ -19116,6 +19116,14 @@
     min-height:0!important;
   }
 
+  /* 条纹不是固定比例图片：主画面直接占满可用高度，避免 2:1 viewBox
+     在高画布中产生上下留白，并与右侧颜色占比条严格等长。 */
+  .center > .canvas-card #patternSvg{
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+  }
+
   /* 颜色占比与画布并排，竖向高度严格对应实际路数比例。 */
   .center > .canvas-card > .role-usage-bar{
     grid-column:2!important;
@@ -34473,6 +34481,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#patternSvg').setAttribute(
       'viewBox',
       '0 0 1200 600'
+    );
+
+    $('#patternSvg').setAttribute(
+      'preserveAspectRatio',
+      'none'
     );
 
     const visual=
