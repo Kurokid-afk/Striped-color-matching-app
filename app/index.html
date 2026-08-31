@@ -4862,38 +4862,83 @@
   }
 
   .copy-image-mode-switch{
-    display:inline-flex;
+    position:relative;
+    display:inline-grid;
+    grid-template-columns:repeat(2,minmax(40px,1fr));
     align-items:center;
+    min-width:88px;
     padding:2px;
     border:1px solid rgba(31,41,51,.09);
-    border-radius:9px;
-    background:#edf0f2;
-    box-shadow:inset 0 1px 2px rgba(31,41,51,.035);
+    border-radius:10px;
+    background:#e9edef;
+    box-shadow:
+      inset 0 1px 2px rgba(31,41,51,.055),
+      0 1px 0 rgba(255,255,255,.8);
     white-space:nowrap;
+    isolation:isolate;
+    overflow:hidden;
   }
 
-  .copy-image-mode-btn{
+  .copy-image-mode-thumb{
+    position:absolute;
+    z-index:0;
+    top:2px;
+    bottom:2px;
+    left:2px;
+    width:calc((100% - 4px)/2);
+    border-radius:8px;
+    pointer-events:none;
+    transform:translate3d(0,0,0);
+    background:#536976;
+    box-shadow:
+      0 2px 5px rgba(42,58,66,.2),
+      inset 0 1px 0 rgba(255,255,255,.17);
+    will-change:transform,background-color;
+    transition:
+      transform 260ms cubic-bezier(.22,.78,.2,1),
+      background-color 210ms ease,
+      box-shadow 210ms ease;
+  }
+
+  .copy-image-mode-switch[data-mode="dimensions"] .copy-image-mode-thumb{
+    transform:translate3d(100%,0,0);
+    background:#866b59;
+    box-shadow:
+      0 2px 5px rgba(72,52,39,.22),
+      inset 0 1px 0 rgba(255,255,255,.16);
+  }
+
+  #copyImageModeSwitch .copy-image-mode-btn{
+    position:relative;
+    z-index:1;
     min-height:25px!important;
-    padding:3px 8px!important;
+    padding:3px 4px!important;
     border:0!important;
     border-radius:7px!important;
     background:transparent!important;
-    color:#7a8489!important;
+    color:#55636a!important;
     box-shadow:none!important;
     font-size:11px!important;
     font-weight:650!important;
-    transition:
-      background-color 190ms cubic-bezier(.2,.8,.2,1),
-      color 170ms ease,
-      box-shadow 190ms ease!important;
+    transition:color 180ms ease!important;
   }
 
-  .copy-image-mode-btn[aria-pressed="true"]{
-    background:#fff!important;
-    color:#273238!important;
-    box-shadow:
-      0 1px 3px rgba(31,41,51,.09),
-      inset 0 0 0 1px rgba(31,41,51,.035)!important;
+  #copyImageModeSwitch .copy-image-mode-btn[aria-pressed="true"]{
+    background:transparent!important;
+    color:#fff!important;
+    box-shadow:none!important;
+  }
+
+  #copyImageModeSwitch .copy-image-mode-btn:hover:not(:disabled),
+  #copyImageModeSwitch .copy-image-mode-btn:active:not(:disabled){
+    transform:none!important;
+    border-color:transparent!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  #copyImageModeSwitch .copy-image-mode-btn:not([aria-pressed="true"]):hover{
+    color:#34434a!important;
   }
 
   .same-hex-alias-badge{
@@ -5015,7 +5060,8 @@
     .canvas-mode-btn,
     .library-search-results,
     .library-group-arrow,
-    .copy-image-mode-btn{transition:none!important}
+    .copy-image-mode-btn,
+    .copy-image-mode-thumb{transition:none!important}
     #copyCanvasImageBtn.copy-done{animation:none!important}
   }
 
@@ -19776,7 +19822,8 @@
 
             <span class="canvas-action-group canvas-content-actions">
               <button class="btn small soft" id="favoriteCurrentCanvasBtn">★ 收藏当前</button>
-              <span class="copy-image-mode-switch" id="copyImageModeSwitch" aria-label="复制图片类型">
+              <span class="copy-image-mode-switch" id="copyImageModeSwitch" data-mode="standard" aria-label="复制图片类型">
+                <span class="copy-image-mode-thumb" aria-hidden="true"></span>
                 <button class="copy-image-mode-btn" id="copyImageStandardMode" type="button" aria-pressed="true">标准</button>
                 <button class="copy-image-mode-btn" id="copyImageDimensionMode" type="button" aria-pressed="false">标尺寸</button>
               </span>
@@ -25767,6 +25814,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function updateCopyImageModeUi(){
     const dimensionMode=copyImageMode==='dimensions';
+    const slot=$('#copyImageModeSwitch');
     const standard=$('#copyImageStandardMode');
     const dimensions=$('#copyImageDimensionMode');
     const copyBtn=$('#copyCanvasImageBtn');
@@ -25779,6 +25827,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       'aria-pressed',
       dimensionMode?'true':'false'
     );
+    if(slot)slot.dataset.mode=dimensionMode?'dimensions':'standard';
 
     if(!copyBtn)return;
 
@@ -34582,6 +34631,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return `${projectName} · 单循环：${lanes} 路 / ${singleSize} mm · 循环 × ${state.repeatCount}`;
   }
 
+  function exportColorNameOrEmpty(value){
+    const text=String(value??'').trim();
+    if(!text || normalizeHex(text))return '';
+    return text;
+  }
+
+  function exportColorHexOrEmpty(...values){
+    for(const value of values){
+      const hex=normalizeHex(value);
+      if(hex)return hex;
+    }
+    return '';
+  }
+
   function exportPatternColorNames(mapping,visual=null,frozenFills=null){
     const stripes=visual?.stripes||state.stripes||[];
     const roles=[...new Set(stripes.map(stripe=>stripe.role).filter(Boolean))];
@@ -34592,28 +34655,34 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       // 名称永远以当前色库为准；收藏里的 frozenFills 只冻结视觉，
       // 不能把当时的旧名字永久带进以后生成的展示图。
       const frozenLibraryFill=
-        (frozen?.id && findFillById(frozen.id)) ||
-        (
-          frozen?.type!=='texture' &&
-          frozen?.hex &&
-          findLibraryColorByHex(frozen.hex)
-        );
-
-      if(frozenLibraryFill?.name){
-        return String(frozenLibraryFill.name).trim();
-      }
+        frozen?.id ? findFillById(frozen.id) : null;
 
       const ref=mappingFillRef(mapping,role);
       const fill=resolveFillRef(ref);
+      const mappingRole=mapping?.[role];
+      const exactName=
+        exportColorNameOrEmpty(frozenLibraryFill?.name) ||
+        exportColorNameOrEmpty(fill?.name) ||
+        exportColorNameOrEmpty(mappingRole?.name) ||
+        exportColorNameOrEmpty(frozen?.name);
 
-      if(fill?.name)return String(fill.name).trim();
-      if(fill?.hex){
-        return findLibraryColorByHex(fill.hex)?.name||fill.hex;
-      }
+      if(exactName)return exactName;
 
-      if(frozen?.name)return String(frozen.name).trim();
+      // 没有资源身份时才按 HEX 去色库寻找可读名称；同 HEX 多名称的
+      // 资源只要保留了 fillId，就一定在上面的精确资源分支返回，不串名。
+      const hex=exportColorHexOrEmpty(
+        fill?.hex,
+        mappingRole?.color,
+        mappingRole?.hex,
+        frozen?.hex,
+        ref
+      );
+      const libraryName=exportColorNameOrEmpty(
+        hex ? findLibraryColorByHex(hex)?.name : ''
+      );
 
-      return roleLabel(role);
+      // 客户规则：有名字显示名字；真正无名时保留 HEX，而不是虚构名称。
+      return libraryName || hex || roleLabel(role);
     }).filter(Boolean);
   }
 
@@ -34959,7 +35028,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         ...rect,
         identity,
         fill,
-        name:fill?.name || roleLabel(rect.role),
+        name:(()=>{
+          const roleValue=mapping?.[rect.role];
+          const exactName=
+            exportColorNameOrEmpty(fill?.name) ||
+            exportColorNameOrEmpty(roleValue?.name);
+          if(exactName)return exactName;
+
+          const hex=exportColorHexOrEmpty(
+            fill?.hex,
+            roleValue?.color,
+            roleValue?.hex,
+            rect.fillRef
+          );
+          const libraryName=exportColorNameOrEmpty(
+            hex ? findLibraryColorByHex(hex)?.name : ''
+          );
+          return libraryName || hex || roleLabel(rect.role);
+        })(),
         centimeters:formatDimensionCentimeters(rect.size)
       });
     });

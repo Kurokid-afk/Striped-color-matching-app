@@ -2,8 +2,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { app, BrowserWindow } = require('electron');
 
-const [testPath, marker, timeoutText] = process.argv.slice(2);
+const [testPath, marker, timeoutText, widthText, heightText] = process.argv.slice(2);
 const timeoutMs = Math.max(1000, Number(timeoutText) || 20000);
+const requestedWidth = Math.max(0, Number(widthText) || 0);
+const requestedHeight = Math.max(0, Number(heightText) || 0);
 
 if (!testPath || !marker) {
   console.error('Expected test HTML path and result marker');
@@ -28,6 +30,11 @@ function finish(code, output = '') {
 app.whenReady().then(async () => {
   const window = new BrowserWindow({
     show: false,
+    ...(requestedWidth && requestedHeight ? {
+      width: requestedWidth,
+      height: requestedHeight,
+      useContentSize: true
+    } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

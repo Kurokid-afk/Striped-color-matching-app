@@ -75,7 +75,6 @@ window.addEventListener('load',async()=>{
     const originalFavorites=deepClone(state.favorites);
     const makeColor=(seed)=>'#'+((seed*2654435761)>>>0)
       .toString(16).slice(-6).padStart(6,'0').toUpperCase();
-    window.resizeTo(1600,1000);
     await wait(100);
     state.favorites=Array.from({length:8},(_,index)=>
       captureFavoriteEntry({
@@ -99,6 +98,9 @@ window.addEventListener('load',async()=>{
         Number(firstRepeatBands[1].getAttribute('height'))
       : 0;
     const adaptiveEight={
+      viewport:[window.innerWidth,window.innerHeight],
+      screen:[window.screen.availWidth,window.screen.availHeight],
+      wrap:[wrapRect.width,wrapRect.height],
       layout:document.querySelector('#favoriteOverview')?.dataset.adaptiveLayout||'',
       count:adaptiveRects.length,
       minHeight:Math.min(...adaptiveHeights),
@@ -209,7 +211,9 @@ const {stdout,stderr}=await execFileAsync(electron,[
   electronRunner,
   fileURLToPath(testHtmlPath),
   '__CODEX_FAVORITE_MOTION_RESULT__',
-  '20000'
+  '20000',
+  '1600',
+  '1000'
 ],{maxBuffer:24*1024*1024,windowsHide:true});
 
 const marker="__CODEX_FAVORITE_MOTION_RESULT__";

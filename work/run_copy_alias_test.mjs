@@ -56,6 +56,16 @@ window.addEventListener('load', async () => {
 
     const names = exportPatternColorNames(state.roles);
     check('export keeps exact alias names', names.includes('海军蓝') && names.includes('午夜蓝'), names.join('|'));
+    const namedTemporary = exportPatternColorNames(
+      { D: { color: '#445566', name: '深雾灰' } },
+      { stripes: [{ lanes: 1, role: 'D' }] }
+    );
+    check('named temporary color exports its name', namedTemporary.join('|') === '深雾灰', namedTemporary.join('|'));
+    const unnamedTemporary = exportPatternColorNames(
+      { D: { color: '#445566', name: '#445566' } },
+      { stripes: [{ lanes: 1, role: 'D' }] }
+    );
+    check('truly unnamed color falls back to hex', unnamedTemporary.join('|') === '#445566', unnamedTemporary.join('|'));
 
     const dimension = buildDimensionDisplayExportSvg();
     check('dimension export mode is selected', dimension.mode === 'dimensions');
@@ -63,6 +73,10 @@ window.addEventListener('load', async () => {
     check('dimension export uses centimeters', dimension.svg.includes('0.3 cm') && dimension.svg.includes('0.45 cm') && dimension.svg.includes('0.6 cm'));
     check('dimension export contains project name', dimension.svg.includes('尺寸与同色异名测试'));
     check('dimension export is a complete image', !dimension.svg.includes('overflow') && !dimension.svg.includes('scrollbar'));
+    const dimensionDocument = new DOMParser().parseFromString(dimension.svg, 'image/svg+xml');
+    const dimensionText = Array.from(dimensionDocument.querySelectorAll('text')).map(node => node.textContent).join('|');
+    check('dimension export uses exact resource names', dimensionText.includes('海军蓝') && dimensionText.includes('午夜蓝'), dimensionText);
+    check('dimension export does not show hex when names exist', !dimensionText.includes('#112233'), dimensionText);
     state.orientation = 'vertical';
     const verticalDimension = buildDimensionDisplayExportSvg();
     check('vertical dimension export keeps every segment', verticalDimension.segmentCount === dimension.segmentCount);
@@ -104,13 +118,23 @@ window.addEventListener('load', async () => {
     check('exact imported resource is merged', idRemap.get('C900') === 'C001');
     check('same hex with a new name is preserved', merged.some(item => item.id === 'C901' && item.name === '雾蓝'));
 
-    setCopyImageMode('dimensions', { persist: true });
+    setCopyImageMode('standard', { persist: false });
+    const modeSwitchBefore = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();
+    void document.querySelector('#copyImageModeSwitch')?.offsetWidth;
+    document.querySelector('#copyImageDimensionMode')?.click();
     check('copy switch updates without layout animation', document.querySelector('#copyImageDimensionMode')?.getAttribute('aria-pressed') === 'true');
+    check('copy switch exposes dimension state', document.querySelector('#copyImageModeSwitch')?.dataset.mode === 'dimensions');
     check('copy button clearly names dimension output', document.querySelector('#copyCanvasImageBtn')?.textContent === '复制尺寸图');
     check('copy switch choice persists', localStorage.getItem(COPY_IMAGE_MODE_KEY) === 'dimensions');
+    const slider = document.querySelector('.copy-image-mode-thumb');
+    check('copy switch has a dedicated sliding thumb', !!slider);
+    check('copy switch animates the thumb transform', getComputedStyle(slider).transitionProperty.split(',').map(value => value.trim()).includes('transform'));
+    const thumbAnimations = (slider?.getAnimations?.() || []);
+    check('clicking a mode starts one smooth slide', thumbAnimations.some(animation => Number(animation.effect?.getTiming?.().duration) >= 200));
     const modeSwitchRect = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();
     const copyButtonRect = document.querySelector('#copyCanvasImageBtn')?.getBoundingClientRect();
     check('copy controls stay on one visual line', !!modeSwitchRect && !!copyButtonRect && Math.abs((modeSwitchRect.top + modeSwitchRect.height / 2) - (copyButtonRect.top + copyButtonRect.height / 2)) < 3);
+    check('copy switch keeps its size while sliding', !!modeSwitchBefore && !!modeSwitchRect && Math.abs(modeSwitchBefore.width - modeSwitchRect.width) < 0.1 && Math.abs(modeSwitchBefore.height - modeSwitchRect.height) < 0.1);
     const switchTransforms = [
       ...(document.querySelector('#copyImageStandardMode')?.getAnimations?.() || []),
       ...(document.querySelector('#copyImageDimensionMode')?.getAnimations?.() || [])
@@ -118,6 +142,21 @@ window.addEventListener('load', async () => {
       .map(frame => frame.transform)
       .filter(Boolean);
     check('copy switch transition has no bounce transform', switchTransforms.length === 0, switchTransforms.join('|'));
+    [slider, document.querySelector('#copyImageStandardMode'), document.querySelector('#copyImageDimensionMode')]
+      .flatMap(element => element?.getAnimations?.() || [])
+      .forEach(animation => animation.finish());
+    const dimensionThumbColor = getComputedStyle(slider).backgroundColor;
+    const dimensionLabelColor = getComputedStyle(document.querySelector('#copyImageDimensionMode')).color;
+    check('dimension selection uses readable white text', dimensionLabelColor === 'rgb(255, 255, 255)', dimensionLabelColor);
+    check('inactive standard label remains dark and readable', getComputedStyle(document.querySelector('#copyImageStandardMode')).color !== 'rgb(255, 255, 255)');
+    document.querySelector('#copyImageStandardMode')?.click();
+    [slider, document.querySelector('#copyImageStandardMode'), document.querySelector('#copyImageDimensionMode')]
+      .flatMap(element => element?.getAnimations?.() || [])
+      .forEach(animation => animation.finish());
+    const standardThumbColor = getComputedStyle(slider).backgroundColor;
+    check('standard selection uses readable white text', getComputedStyle(document.querySelector('#copyImageStandardMode')).color === 'rgb(255, 255, 255)');
+    check('two modes use different slider colors', standardThumbColor !== dimensionThumbColor, standardThumbColor + '|' + dimensionThumbColor);
+    setCopyImageMode('dimensions', { persist: true });
     const dimensionBlob = await svgExportToPngBlob(dimension.svg, dimension.width, dimension.height, 1);
     check('dimension svg rasterizes to png', dimensionBlob.type === 'image/png' && dimensionBlob.size > 10000, String(dimensionBlob.size));
     let dimensionPngBase64 = '';
