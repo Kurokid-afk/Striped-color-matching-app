@@ -40,6 +40,18 @@ window.addEventListener('load', async () => {
       { lanes: 4, role: 'C', _sortId: 'test-c' }
     ];
     state.palette = ['C001', 'C002', 'C003'];
+    renderAll();
+
+    beginRoleReplace('A');
+    const immediateSwapSwatch = document.querySelector('#paletteGrid .swatch[data-index="1"]');
+    check('swap marker appears immediately when replacement starts', immediateSwapSwatch?.classList.contains('role-replace-swap'));
+    check('replacement helper clearly explains swapping', /↔.*对调/.test(document.querySelector('#roleReplaceHelper')?.textContent || ''));
+    cancelRoleReplace({ silent: true });
+
+    const originalRoleAFillId = state.roles.A.fillId;
+    delete state.roles.A.fillId;
+    check('legacy role name and hex recover exact resource identity', roleFillRef(state.roles.A) === 'C001', String(roleFillRef(state.roles.A)));
+    state.roles.A.fillId = originalRoleAFillId;
 
     check('same hex stays visually equal', fillVisualKey('C001') === fillVisualKey('C002'));
     check('same hex aliases have distinct identity', fillIdentityKey('C001') !== fillIdentityKey('C002'));
@@ -117,6 +129,44 @@ window.addEventListener('load', async () => {
     ], idRemap);
     check('exact imported resource is merged', idRemap.get('C900') === 'C001');
     check('same hex with a new name is preserved', merged.some(item => item.id === 'C901' && item.name === '雾蓝'));
+
+    const libraryBeforeDetachedEdit = deepClone(colorLibrary);
+    const palettesBeforeDetachedEdit = deepClone(savedPalettes());
+    const paletteBeforeDetachedEdit = deepClone(state.palette);
+    const rolesBeforeDetachedEdit = deepClone(state.roles);
+    const activePaletteBeforeDetachedEdit = state.activeSavedPaletteId;
+    const paletteNameBeforeDetachedEdit = state.paletteName;
+
+    writeSavedPalettes([
+      { id: 'pal-one', name: '第一组', colors: ['C001'], savedAt: 1 },
+      { id: 'pal-two', name: '第二组', colors: ['C001'], savedAt: 2 }
+    ], { touchAssets: false, reason: 'copy-alias-test-setup' });
+    state.activeSavedPaletteId = 'pal-one';
+    state.paletteName = '第一组';
+    state.palette = ['C001'];
+    state.roles.A = { color: '#112233', name: '海军蓝', locked: false };
+    renderLibraryTable();
+
+    const groupedNameInput = document.querySelector('.library-resource-row[data-group-key="palette_0"][data-id="C001"] .lib-name-input');
+    check('shared color row can be edited in its own palette group', !!groupedNameInput);
+    groupedNameInput.value = '仅第一组海军蓝';
+    groupedNameInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const palettesAfterDetachedEdit = savedPalettes();
+    const detachedId = palettesAfterDetachedEdit[0]?.colors?.[0];
+    check('editing one palette detaches the shared resource', detachedId && detachedId !== 'C001' && palettesAfterDetachedEdit[1]?.colors?.[0] === 'C001', String(detachedId));
+    check('other palette keeps the original name', findFillById('C001')?.name === '海军蓝', String(findFillById('C001')?.name));
+    check('edited palette receives only its new name', findFillById(detachedId)?.name === '仅第一组海军蓝', String(findFillById(detachedId)?.name));
+    check('active role follows the detached resource', state.roles.A.fillId === detachedId, String(state.roles.A.fillId));
+
+    colorLibrary = libraryBeforeDetachedEdit;
+    writeSavedPalettes(palettesBeforeDetachedEdit, { touchAssets: false, reason: 'copy-alias-test-restore' });
+    state.palette = paletteBeforeDetachedEdit;
+    state.roles = rolesBeforeDetachedEdit;
+    state.activeSavedPaletteId = activePaletteBeforeDetachedEdit;
+    state.paletteName = paletteNameBeforeDetachedEdit;
+    saveColorLibrary();
+    renderAll();
 
     setCopyImageMode('standard', { persist: false });
     const modeSwitchBefore = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();

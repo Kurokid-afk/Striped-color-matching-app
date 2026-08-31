@@ -257,7 +257,7 @@ internal enum FileAvailability
 
 internal static class UpdaterEngine
 {
-    public const string TargetVersion = "1.0.14";
+    public const string TargetVersion = "1.0.15";
     private const string AppId = "com.kurokid.stripestudio";
     private const string ProductName = "条纹纺织调色";
     private const string RegistryPath = @"Software\Kurokid\StripeStudio";

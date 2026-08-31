@@ -19172,6 +19172,38 @@
       0 4px 10px rgba(50,39,32,.08)!important;
   }
 
+  #paletteControlSection > h3{
+    display:flex!important;
+    align-items:center;
+    gap:7px;
+    min-width:0;
+  }
+
+  .role-replace-helper{
+    margin-left:auto;
+    max-width:150px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding:2px 7px;
+    border-radius:999px;
+    background:#eef1f3;
+    color:#68737a;
+    font-size:8.5px;
+    font-weight:680;
+    line-height:1.45;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  #paletteControlSection.role-replace-active .role-replace-helper{
+    background:#806754;
+    color:#fff;
+    box-shadow:0 1px 3px rgba(57,45,37,.14);
+  }
+
   /* ========================================================
      正式版 — 自适应展示 + 高利用率方案工作区
      ======================================================== */
@@ -19947,7 +19979,7 @@
 
       <div class="rightbar-palette-scroll" id="rightbarPaletteScroll">
 <div class="section palette-control-section" id="paletteControlSection">
-        <h3>当前色板</h3>
+        <h3>当前色板 <span class="role-replace-helper" id="roleReplaceHelper" title="点击颜色角色的色块即可开始换色">点角色色块换色</span></h3>
         <div class="row"><label>色板名称</label><input id="paletteName" type="text" value="默认色板"/></div>
         <div class="palette-search-wrap">
           <input id="paletteLibrarySearch" type="text" placeholder="从色库搜索颜色名字 / HEX" autocomplete="off"/>
@@ -27067,8 +27099,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       name:String(role.name||roleKey)
     };
 
-    if(role.fillId && findFillById(role.fillId)){
-      assignment.fillId=findFillById(role.fillId).id;
+    const resolved=resolveFillRef(roleFillRef(role));
+
+    if(resolved?.id && findFillById(resolved.id)){
+      assignment.fillId=findFillById(resolved.id).id;
     }
 
     return assignment;
@@ -27303,9 +27337,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     );
   }
 
+  function exactLibraryResourceForRole(role){
+    if(!role)return null;
+    if(role.fillId && findFillById(role.fillId)){
+      return findFillById(role.fillId);
+    }
+
+    const hex=normalizeHex(role.color);
+    const name=normalizedResourceName(role.name);
+
+    if(!hex || !name)return null;
+
+    const matches=colorLibrary.filter(item=>
+      item?.type!=='texture' &&
+      normalizeHex(item?.hex)===hex &&
+      normalizedResourceName(item?.name)===name
+    );
+
+    return matches.length===1 ? matches[0] : null;
+  }
+
   function roleFillRef(role){
     if(!role)return null;
-    if(role.fillId && findFillById(role.fillId)) return role.fillId;
+    const exact=exactLibraryResourceForRole(role);
+    if(exact)return exact.id;
     return normalizeHex(role.color)||null;
   }
 
@@ -30967,7 +31022,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $$('#roles .role-fill-preview').forEach(preview=>{
       preview.tabIndex=0;
       preview.setAttribute('role','button');
-      preview.setAttribute('aria-label','从当前色板替换这个颜色');
+      preview.setAttribute('aria-label','点击换色；选择已使用颜色会自动对调');
+      preview.title='点击换色；色板中带 ↔ 的颜色会与当前颜色对调';
 
       const activate=e=>{
         e.preventDefault();
@@ -31399,6 +31455,60 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       .map(g=>g.key);
   }
 
+  function detachSharedLibraryResourceForGroupEdit(resourceId,groupKey){
+    const source=findFillById(resourceId);
+    const match=/^palette_(\d+)$/.exec(String(groupKey||''));
+
+    if(!source || !match){
+      return {resource:source,detached:false};
+    }
+
+    const paletteIndex=Number(match[1]);
+    const list=savedPalettes();
+    const palette=list[paletteIndex];
+    const groups=libraryGroupForResourceId(source.id);
+
+    if(!palette || groups.length<2){
+      return {resource:source,detached:false};
+    }
+
+    const activeRoleKeys=
+      state.activeSavedPaletteId===palette.id
+        ? roleNames().filter(role=>
+            roleFillRef(state.roles?.[role])===source.id
+          )
+        : [];
+
+    const clone={
+      ...deepClone(source),
+      id:nextResourceId(source.type)
+    };
+
+    colorLibrary.push(clone);
+    palette.colors=(Array.isArray(palette.colors)?palette.colors:[])
+      .map(ref=>{
+        const resource=libraryResourceForPaletteRef(ref);
+        return resource?.id===source.id ? clone.id : ref;
+      });
+
+    writeSavedPalettes(list,{
+      reason:'library-group-edit-detach'
+    });
+
+    if(state.activeSavedPaletteId===palette.id){
+      state.palette=(state.palette||[]).map(ref=>{
+        const resource=libraryResourceForPaletteRef(ref);
+        return resource?.id===source.id ? clone.id : ref;
+      });
+
+      activeRoleKeys.forEach(role=>{
+        state.roles[role].fillId=clone.id;
+      });
+    }
+
+    return {resource:clone,detached:true};
+  }
+
   function libraryTableRowMotionKey(row){
     if(!row)return '';
 
@@ -31630,15 +31740,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                   title="拖动排序；可拖到其他分组并同步对应色板">⋮⋮</span>
           </td>
           <td><span class="fill-preview" style="${fillPreviewStyle(c.id)}"></span></td>
-          <td><input class="lib-name-input" data-id="${c.id}" type="text" value="${c.name||''}" placeholder="${isTexture?'纹理名称':'颜色名字'}"/>${aliasLabel?`<span class="same-hex-alias-badge">${aliasLabel}</span>`:''}</td>
+          <td><input class="lib-name-input" data-id="${c.id}" data-group-key="${group.key}" type="text" value="${c.name||''}" placeholder="${isTexture?'纹理名称':'颜色名字'}"/>${aliasLabel?`<span class="same-hex-alias-badge">${aliasLabel}</span>`:''}</td>
           <td><input class="library-id-input" data-id="${c.id}" type="text" value="${c.id}" readonly title="点击复制 ID"/></td>
           <td>${isTexture?'<span class="fill-type-badge texture-badge">纹理</span>':'<span class="fill-type-badge">纯色</span>'}</td>
           <td>${isTexture
             ? '<span class="muted">—</span>'
-            : `<input class="lib-hex-input" data-id="${c.id}" type="text" value="${c.hex||''}" placeholder="#RRGGBB"/>`
+            : `<input class="lib-hex-input" data-id="${c.id}" data-group-key="${group.key}" type="text" value="${c.hex||''}" placeholder="#RRGGBB"/>`
           }</td>
           <td>${isTexture
-            ? `<select class="lib-brightness" data-id="${c.id}">
+            ? `<select class="lib-brightness" data-id="${c.id}" data-group-key="${group.key}">
                 <option value="25" ${Number(c.brightness||50)===25?'selected':''}>深</option>
                 <option value="50" ${Number(c.brightness||50)===50?'selected':''}>中</option>
                 <option value="75" ${Number(c.brightness||50)===75?'selected':''}>浅</option>
@@ -31646,7 +31756,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             : '<span class="muted">自动</span>'
           }</td>
           <td>${isTexture
-            ? `<input class="texture-scale-input" data-id="${c.id}" type="number" min="10" max="400" step="10" value="${Number(c.scale||100)}" title="纹理缩放百分比"/>`
+            ? `<input class="texture-scale-input" data-id="${c.id}" data-group-key="${group.key}" type="number" min="10" max="400" step="10" value="${Number(c.scale||100)}" title="纹理缩放百分比"/>`
             : '<span class="muted">—</span>'
           }</td>
           <td><button class="btn small danger lib-delete item-delete-x" data-id="${c.id}" title="删除色库颜色">×</button></td>`;
@@ -31700,40 +31810,46 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     $$('.lib-name-input').forEach(el=>{
       el.onchange=e=>{
-        const c=findFillById(e.target.dataset.id);
-        if(!c)return;
+        const source=findFillById(e.target.dataset.id);
+        if(!source)return;
 
         const next=e.target.value.trim()||'未命名';
-        if(next===c.name){
-          e.target.value=c.name;
+        if(next===source.name){
+          e.target.value=source.name;
           return;
         }
 
         const duplicate=findExactLibraryResource(
-          {...c,name:next},
-          c.id
+          {...source,name:next},
+          source.id
         );
 
         if(duplicate){
-          e.target.value=c.name;
+          e.target.value=source.name;
           toast(`已有完全相同的色卡：${duplicate.name} · ID ${duplicate.id}`);
           return;
         }
 
         pushHistory();
+        const edit=detachSharedLibraryResourceForGroupEdit(
+          source.id,
+          e.target.dataset.groupKey
+        );
+        const c=edit.resource;
+        if(!c)return;
         c.name=next;
         saveColorLibrary();
         syncRoleNamesFromLibrary();
         renderAll();
         renderLibraryTable();
-        toast('名字已更新');
+        toast(edit.detached?'名字已更新，只影响当前色板':'名字已更新');
       };
     });
 
     $$('.lib-hex-input').forEach(el=>{
       el.onchange=e=>{
-        const c=findFillById(e.target.dataset.id);
-        if(!c || c.type==='texture')return;
+        const source=findFillById(e.target.dataset.id);
+        if(!source || source.type==='texture')return;
 
         const h=normalizeHex(e.target.value);
         if(!h){
@@ -31742,14 +31858,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return;
         }
 
-        if(h===normalizeHex(c.hex)){
+        if(h===normalizeHex(source.hex)){
           e.target.value=h;
           return;
         }
 
         const duplicate=findExactLibraryResource(
-          {...c,hex:h},
-          c.id
+          {...source,hex:h},
+          source.id
         );
 
         if(duplicate){
@@ -31759,6 +31875,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
 
         pushHistory();
+        const edit=detachSharedLibraryResourceForGroupEdit(
+          source.id,
+          e.target.dataset.groupKey
+        );
+        const c=edit.resource;
+        if(!c)return;
         c.hex=h;
         saveColorLibrary();
         syncRoleNamesFromLibrary();
@@ -31768,13 +31890,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     $$('.lib-brightness').forEach(el=>el.onchange=e=>{
-      const c=findFillById(e.target.dataset.id);
-      if(!c || c.type!=='texture')return;
+      const source=findFillById(e.target.dataset.id);
+      if(!source || source.type!=='texture')return;
 
       const next=Number(e.target.value);
-      if(next===Number(c.brightness||50))return;
+      if(next===Number(source.brightness||50))return;
 
       pushHistory();
+      const edit=detachSharedLibraryResourceForGroupEdit(
+        source.id,
+        e.target.dataset.groupKey
+      );
+      const c=edit.resource;
+      if(!c)return;
       c.brightness=next;
       saveColorLibrary();
       renderAll();
@@ -31782,16 +31910,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     $$('.texture-scale-input').forEach(el=>el.onchange=e=>{
-      const c=findFillById(e.target.dataset.id);
-      if(!c || c.type!=='texture')return;
+      const source=findFillById(e.target.dataset.id);
+      if(!source || source.type!=='texture')return;
 
       const next=Math.max(10,Math.min(400,Number(e.target.value)||100));
-      if(next===Number(c.scale||100)){
+      if(next===Number(source.scale||100)){
         e.target.value=next;
         return;
       }
 
       pushHistory();
+      const edit=detachSharedLibraryResourceForGroupEdit(
+        source.id,
+        e.target.dataset.groupKey
+      );
+      const c=edit.resource;
+      if(!c)return;
       c.scale=next;
       saveColorLibrary();
       renderAll();
@@ -32707,6 +32841,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function updateRoleReplaceUI(){
     const palette=$('#paletteGrid');
     const paletteSection=$('#paletteControlSection');
+    const helper=$('#roleReplaceHelper');
 
     const active=
       !!pendingRoleReplace &&
@@ -32721,6 +32856,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       'role-replace-active',
       active
     );
+
+    if(helper){
+      helper.textContent=active
+        ? `正在换 ${roleLabel(pendingRoleReplace)} · ↔ 对调`
+        : '点角色色块换色';
+      helper.title=active
+        ? '点击色板中的颜色完成替换；带 ↔ 的颜色会与当前角色自动对调'
+        : '点击任意颜色角色的色块开始换色';
+    }
 
     $$('#roles .role-item').forEach(card=>{
       card.classList.toggle(
@@ -32758,6 +32902,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     pendingRoleReplace=role;
+    preserveRightPaletteScroll(()=>renderPalette());
     updateRoleReplaceUI();
 
     requestAnimationFrame(
@@ -32772,6 +32917,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     pendingRoleReplace=null;
     lastRoleReplacePulseKey='';
+    preserveRightPaletteScroll(()=>renderPalette());
     updateRoleReplaceUI();
     updateRoleFocusOverlay();
 
