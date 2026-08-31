@@ -4861,6 +4861,56 @@
     white-space:nowrap;
   }
 
+  .copy-image-mode-switch{
+    display:inline-flex;
+    align-items:center;
+    padding:2px;
+    border:1px solid rgba(31,41,51,.09);
+    border-radius:9px;
+    background:#edf0f2;
+    box-shadow:inset 0 1px 2px rgba(31,41,51,.035);
+    white-space:nowrap;
+  }
+
+  .copy-image-mode-btn{
+    min-height:25px!important;
+    padding:3px 8px!important;
+    border:0!important;
+    border-radius:7px!important;
+    background:transparent!important;
+    color:#7a8489!important;
+    box-shadow:none!important;
+    font-size:11px!important;
+    font-weight:650!important;
+    transition:
+      background-color 190ms cubic-bezier(.2,.8,.2,1),
+      color 170ms ease,
+      box-shadow 190ms ease!important;
+  }
+
+  .copy-image-mode-btn[aria-pressed="true"]{
+    background:#fff!important;
+    color:#273238!important;
+    box-shadow:
+      0 1px 3px rgba(31,41,51,.09),
+      inset 0 0 0 1px rgba(31,41,51,.035)!important;
+  }
+
+  .same-hex-alias-badge{
+    display:inline-flex;
+    align-items:center;
+    margin-left:5px;
+    padding:2px 6px;
+    border-radius:999px;
+    background:#edf1f3;
+    color:#667178;
+    font-size:9px;
+    font-weight:650;
+    line-height:1.25;
+    vertical-align:middle;
+    white-space:nowrap;
+  }
+
 
   /* ========================================================
      Refined Motion System v2
@@ -4964,7 +5014,8 @@
   @media (prefers-reduced-motion:reduce){
     .canvas-mode-btn,
     .library-search-results,
-    .library-group-arrow{transition:none!important}
+    .library-group-arrow,
+    .copy-image-mode-btn{transition:none!important}
     #copyCanvasImageBtn.copy-done{animation:none!important}
   }
 
@@ -19725,6 +19776,10 @@
 
             <span class="canvas-action-group canvas-content-actions">
               <button class="btn small soft" id="favoriteCurrentCanvasBtn">★ 收藏当前</button>
+              <span class="copy-image-mode-switch" id="copyImageModeSwitch" aria-label="复制图片类型">
+                <button class="copy-image-mode-btn" id="copyImageStandardMode" type="button" aria-pressed="true">标准</button>
+                <button class="copy-image-mode-btn" id="copyImageDimensionMode" type="button" aria-pressed="false">标尺寸</button>
+              </span>
               <button class="btn small soft" id="copyCanvasImageBtn" title="把当前显示的主画布、收藏总览或方案对比复制成高清图片，可直接 Ctrl+V 粘贴">复制展示图</button>
             </span>
 
@@ -19919,6 +19974,7 @@
             <p>• <b>固定资产</b>：色库和已保存色板与软件共存，不属于任何一个条纹项目。导入、导出项目都不会携带或覆盖它们。</p>
             <p>• <b>色板</b>：长期保存的一组颜色；颜色默认写入色库，保存色板后自动归入同名分类。</p>
             <p>• <b>色库</b>：长期保存颜色名字、HEX 色号和纹理的总库。</p>
+            <p>• <b>同色异名</b>：同一个 HEX 可以建立多个名字，每张色卡都有独立 ID。手动选择时按 ID 区分；自动配色仍默认避免出现两个视觉相同的颜色。</p>
             <p>• 在“当前色板”的搜索框里，可以按名字或 HEX 从色库查找并加入。</p>
             <p>• 条纹右侧“颜色角色”里的名字只显示，不允许在那里修改；要改名字请回到色库。</p>
             <p>• ID 不是颜色天生自带的：只有加入色库后才分配 ID。纯色仍保留 HEX；纹理依靠 ID 定位。</p>
@@ -23439,6 +23495,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const STRIPE_TEMPLATE_KEY = 'stripeStudioStructureTemplatesV1';
   const RANDOM_STRIPE_SETTINGS_KEY = 'stripeStudioRandomStripeSettingsV1';
   const FIXED_ASSET_META_KEY = 'stripeStudioFixedAssetMetaV1';
+  const COPY_IMAGE_MODE_KEY = 'stripeStudioCopyImageModeV1';
   const FIXED_ASSET_BUNDLE_VERSION = 2;
   const DURABLE_DB_NAME = 'StripeStudioDurableVault';
   const DURABLE_DB_STORE = 'snapshots';
@@ -23555,6 +23612,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   let durableVaultRecoveryMessage = '';
   let durableVaultWarningShown = false;
   let durableVaultCachedData = null;
+  let copyImageMode=
+    localStorage.getItem(COPY_IMAGE_MODE_KEY)==='dimensions'
+      ? 'dimensions'
+      : 'standard';
 
   let uiOperation='idle';
 
@@ -25704,6 +25765,52 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return toIndex>fromIndex ? 1 : -1;
   }
 
+  function updateCopyImageModeUi(){
+    const dimensionMode=copyImageMode==='dimensions';
+    const standard=$('#copyImageStandardMode');
+    const dimensions=$('#copyImageDimensionMode');
+    const copyBtn=$('#copyCanvasImageBtn');
+
+    standard?.setAttribute(
+      'aria-pressed',
+      dimensionMode?'false':'true'
+    );
+    dimensions?.setAttribute(
+      'aria-pressed',
+      dimensionMode?'true':'false'
+    );
+
+    if(!copyBtn)return;
+
+    if(dimensionMode){
+      copyBtn.textContent='复制尺寸图';
+      copyBtn.title='复制当前条纹的完整尺寸标注图；每一段按路数和单路毫米换算为厘米';
+      return;
+    }
+
+    copyBtn.textContent=
+      currentCanvasPage==='compare'
+        ? '复制对比图'
+        : '复制展示图';
+    copyBtn.title='把当前显示的主画布、收藏总览或方案对比复制成高清图片，可直接 Ctrl+V 粘贴';
+  }
+
+  function setCopyImageMode(mode,{persist=true}={}){
+    const next=mode==='dimensions'?'dimensions':'standard';
+    if(next===copyImageMode){
+      updateCopyImageModeUi();
+      return;
+    }
+
+    copyImageMode=next;
+
+    if(persist){
+      localStorage.setItem(COPY_IMAGE_MODE_KEY,copyImageMode);
+    }
+
+    updateCopyImageModeUi();
+  }
+
   function setCanvasModeControl(mode){
     const slot=$('#canvasModeSwitch');
     if(!slot)return;
@@ -25785,6 +25892,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     updateSchemePreviewControls();
+    updateCopyImageModeUi();
   
     requestAnimationFrame(updateStripeSelectionMarkers);
   }
@@ -26685,6 +26793,65 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return prefix+String(n).padStart(3,'0');
   }
 
+  function normalizedResourceName(name){
+    return String(name||'')
+      .trim()
+      .replace(/\s+/g,' ')
+      .toLocaleLowerCase();
+  }
+
+  function libraryResourceContentKey(resource){
+    if(!resource)return '';
+
+    const name=normalizedResourceName(resource.name);
+
+    if(resource.type==='texture' || resource.image){
+      return `texture|${name}|${durableHash({
+        image:String(resource.image||''),
+        brightness:Number(resource.brightness ?? 50),
+        scale:Number(resource.scale ?? 100)
+      })}`;
+    }
+
+    const hex=normalizeHex(resource.hex||resource.color);
+    return hex ? `solid|${name}|${hex}` : '';
+  }
+
+  function findExactLibraryResource(resource,excludeId=''){
+    const key=libraryResourceContentKey(resource);
+    const excluded=String(excludeId||'').trim().toUpperCase();
+
+    if(!key)return null;
+
+    return colorLibrary.find(item=>
+      String(item?.id||'').trim().toUpperCase()!==excluded &&
+      libraryResourceContentKey(item)===key
+    ) || null;
+  }
+
+  function solidHexAliases(hex){
+    const h=normalizeHex(hex);
+    if(!h)return [];
+
+    return colorLibrary.filter(item=>
+      item?.type!=='texture' &&
+      normalizeHex(item?.hex)===h
+    );
+  }
+
+  function sameHexAliasLabel(resource){
+    if(!resource || resource.type==='texture')return '';
+
+    const aliases=solidHexAliases(resource.hex);
+    const names=new Set(
+      aliases.map(item=>normalizedResourceName(item.name))
+    );
+
+    return names.size>1
+      ? `同色异名 ${aliases.length}`
+      : '';
+  }
+
   function findLibraryColorByHex(hex){
     const h=normalizeHex(hex);
     return colorLibrary.find(c=>c.type!=='texture' && normalizeHex(c.hex)===h);
@@ -26741,6 +26908,28 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return null;
   }
 
+  function fillIdentityKey(ref){
+    const fill=resolveFillRef(ref);
+    if(!fill)return '';
+
+    if(fill.id){
+      return `resource:${String(fill.id).trim().toUpperCase()}`;
+    }
+
+    if(fill.type==='solid'){
+      const hex=normalizeHex(fill.hex);
+      return hex ? `temporary-solid:${hex}` : '';
+    }
+
+    return fill.image
+      ? `temporary-texture:${durableHash({
+          image:String(fill.image),
+          brightness:Number(fill.brightness ?? 50),
+          scale:Number(fill.scale ?? 100)
+        })}`
+      : '';
+  }
+
 
 
   function usedRoleKeys(){
@@ -26786,7 +26975,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     if(!selected)return null;
 
-    const candidateKey=fillVisualKey(
+    // 手动选择按“资源身份”判断重复：同一张色卡仍然对调，
+    // 同 HEX 的另一张命名色卡则允许共存。
+    const candidateKey=fillIdentityKey(
       selected.id || selected.hex
     );
 
@@ -26802,7 +26993,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       if(
         current &&
-        fillVisualKey(roleFillRef(state.roles[role]))===candidateKey
+        fillIdentityKey(roleFillRef(state.roles[role]))===candidateKey
       ){
         return {
           role,
@@ -26889,10 +27080,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return null;
     }
 
-    const nextHex=
-      normalizeHex(nextFill.hex);
+    const nextIdentity=
+      fillIdentityKey(
+        roleFillRef(state.roles[nextRole])
+      );
 
-    if(!nextHex){
+    if(!nextIdentity){
       return null;
     }
 
@@ -26917,12 +27110,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         );
 
       if(
-        fill?.type==='solid' &&
-        normalizeHex(fill.hex)===nextHex
+        fill &&
+        fillIdentityKey(
+          roleFillRef(state.roles[role])
+        )===nextIdentity
       ){
         return {
           role,
-          hex:nextHex
+          hex:normalizeHex(nextFill.hex)||null,
+          id:nextFill.id||null
         };
       }
     }
@@ -26981,10 +27177,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     );
 
     if(!f)return null;
-    if(f.type==='texture' && f.id)return `texture:${String(f.id).toUpperCase()}`;
-
-    const hex=normalizeHex(f.hex);
-    return hex ? `solid:${hex.toUpperCase()}` : null;
+    return fillIdentityKey(roleFillRef(role)) || null;
   }
 
   function collapseDuplicateUsedFillRoles(){
@@ -27630,34 +27823,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const original=advancedPickerState.original;
     const resultHex=advancedPickerHexFromState();
 
-    // 双击“替换色板颜色”时，目标颜色不能已经存在于当前色板。
-    // 名字、ID 都不参与判断，只看实际纯色 HEX。
-    if(
-      apply &&
-      mode==='paletteReplace' &&
-      Number.isInteger(paletteIndex)
-    ){
-      const duplicate=
-        findPaletteDuplicateSolidHex(
-          resultHex,
-          paletteIndex
-        );
-
-      if(duplicate){
-        animateDuplicatePaletteColorWarning();
-
-        const duplicateName=
-          duplicate.fill?.name ||
-          duplicate.fill?.hex ||
-          resultHex;
-
-        toast(
-          `当前色板已经有 ${duplicateName}，不能替换成重复颜色`
-        );
-
-        return;
-      }
-    }
+    // HEX 相同并不代表同一张色卡。替换时先进入命名步骤，
+    // 再按“名字 + HEX + 纹理”的资源身份决定复用、创建或对调。
 
     if(mode==='base'){
       if(apply){
@@ -27988,8 +28155,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     ensureStripeSortIds();
 
-    // 修复旧版本已经产生的“两个正在使用角色引用同一颜色/纹理”。
-    // 视觉不会改变，只把重复条纹统一回第一个角色，之后的新替换走对调逻辑。
+    // 修复旧版本已经产生的“两个正在使用角色引用同一资源”。
+    // 同 HEX、不同 ID 的命名色卡是合法数据，不能在迁移时被合并。
     collapseDuplicateUsedFillRoles();
 
     if(!Array.isArray(state.palette))state.palette=[];
@@ -31404,6 +31571,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         tr.dataset.sortKey=`library_${group.key}_${c.id}`;
 
         const isTexture=c.type==='texture';
+        const aliasLabel=sameHexAliasLabel(c);
 
         tr.innerHTML=`
           <td>
@@ -31413,7 +31581,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                   title="拖动排序；可拖到其他分组并同步对应色板">⋮⋮</span>
           </td>
           <td><span class="fill-preview" style="${fillPreviewStyle(c.id)}"></span></td>
-          <td><input class="lib-name-input" data-id="${c.id}" type="text" value="${c.name||''}" placeholder="${isTexture?'纹理名称':'颜色名字'}"/></td>
+          <td><input class="lib-name-input" data-id="${c.id}" type="text" value="${c.name||''}" placeholder="${isTexture?'纹理名称':'颜色名字'}"/>${aliasLabel?`<span class="same-hex-alias-badge">${aliasLabel}</span>`:''}</td>
           <td><input class="library-id-input" data-id="${c.id}" type="text" value="${c.id}" readonly title="点击复制 ID"/></td>
           <td>${isTexture?'<span class="fill-type-badge texture-badge">纹理</span>':'<span class="fill-type-badge">纯色</span>'}</td>
           <td>${isTexture
@@ -31492,6 +31660,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return;
         }
 
+        const duplicate=findExactLibraryResource(
+          {...c,name:next},
+          c.id
+        );
+
+        if(duplicate){
+          e.target.value=c.name;
+          toast(`已有完全相同的色卡：${duplicate.name} · ID ${duplicate.id}`);
+          return;
+        }
+
         pushHistory();
         c.name=next;
         saveColorLibrary();
@@ -31516,6 +31695,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
         if(h===normalizeHex(c.hex)){
           e.target.value=h;
+          return;
+        }
+
+        const duplicate=findExactLibraryResource(
+          {...c,hex:h},
+          c.id
+        );
+
+        if(duplicate){
+          toast(`已有完全相同的色卡：${duplicate.name} · ID ${duplicate.id}`);
+          renderLibraryTable();
           return;
         }
 
@@ -31725,11 +31915,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     pushHistory();
 
     hex=normalizeHex(hex)||'#888888';
+    const baseName=String(name||'新颜色').trim()||'新颜色';
+    let finalName=baseName;
+    let suffix=2;
+
+    while(findExactLibraryResource({
+      type:'solid',
+      name:finalName,
+      hex
+    })){
+      finalName=`${baseName} ${suffix++}`;
+    }
 
     const item={
       id:nextResourceId('solid'),
       type:'solid',
-      name,
+      name:finalName,
       hex
     };
 
@@ -32023,6 +32224,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       sourceHeight:encoded.height
     };
 
+    const exact=findExactLibraryResource(item);
+
+    if(exact){
+      toast(`相同纹理已经在色库中：${exact.name} · ID ${exact.id}`);
+      return exact;
+    }
+
     colorLibrary.push(item);
     if(!saveColorLibrary({reason:'texture-add'})){
       colorLibrary=before.colorLibrary;
@@ -32090,8 +32298,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
   }
 
-  function cleanImportedAssetColors(value){
+  function cleanImportedAssetColors(value,idRemap=new Map()){
     const used=new Set();
+    const contentIds=new Map();
     const reserved=new Set(
       (colorLibrary||[])
         .map(item=>String(item?.id||'').trim().toUpperCase())
@@ -32136,26 +32345,61 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       const key=String(item.id||'').trim().toUpperCase();
       if(!key || used.has(key))return null;
+
+      const contentKey=libraryResourceContentKey(item);
+      const canonicalId=contentIds.get(contentKey);
+
+      if(contentKey && canonicalId){
+        idRemap.set(key,canonicalId);
+        return null;
+      }
+
       used.add(key);
+      if(contentKey)contentIds.set(contentKey,item.id);
       return item;
     }).filter(Boolean);
   }
 
-  function mergeFixedAssetColors(current,incoming){
+  function mergeFixedAssetColors(current,incoming,idRemap=new Map()){
     const result=deepClone(Array.isArray(current)?current:[]);
     const ids=new Set(result.map(item=>String(item?.id||'').trim().toUpperCase()));
+    const byContent=new Map(
+      result.map(item=>[libraryResourceContentKey(item),item.id])
+        .filter(([key])=>!!key)
+    );
 
     (incoming||[]).forEach(item=>{
-      const key=String(item?.id||'').trim().toUpperCase();
-      if(!key || ids.has(key))return;
-      ids.add(key);
-      result.push(deepClone(item));
+      const sourceId=String(item?.id||'').trim();
+      const sourceKey=sourceId.toUpperCase();
+      const contentKey=libraryResourceContentKey(item);
+      const exactId=byContent.get(contentKey);
+
+      if(exactId){
+        if(sourceKey)idRemap.set(sourceKey,exactId);
+        return;
+      }
+
+      const next=deepClone(item);
+      let nextKey=sourceKey;
+
+      if(!nextKey || ids.has(nextKey)){
+        next.id=nextResourceIdFromSet(
+          next.type==='texture'?'texture':'solid',
+          ids
+        );
+        nextKey=String(next.id).toUpperCase();
+        if(sourceKey)idRemap.set(sourceKey,next.id);
+      }
+
+      ids.add(nextKey);
+      if(contentKey)byContent.set(contentKey,next.id);
+      result.push(next);
     });
 
     return result;
   }
 
-  function cleanImportedAssetPalettes(value,incomingColors=[]){
+  function cleanImportedAssetPalettes(value,incomingColors=[],idRemap=new Map()){
     const resources=new Map();
     [...(colorLibrary||[]),...(incomingColors||[])].forEach(item=>{
       const key=String(item?.id||'').trim().toUpperCase();
@@ -32175,7 +32419,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         ).trim();
         if(!raw)return;
 
-        const resourceId=resources.get(raw.toUpperCase());
+        const remapped=idRemap.get(raw.toUpperCase()) || raw;
+        const resourceId=resources.get(String(remapped).toUpperCase());
         const normalized=resourceId || normalizeHex(raw);
         if(!normalized)return;
 
@@ -32194,6 +32439,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         savedAt:Number(palette?.savedAt)||Date.now()
       };
     });
+  }
+
+  function remapImportedPaletteResourceIds(palettes,idRemap){
+    return (palettes||[]).map(palette=>({
+      ...palette,
+      colors:(palette.colors||[]).map(ref=>{
+        const raw=String(ref||'').trim();
+        return idRemap.get(raw.toUpperCase()) || ref;
+      })
+    }));
   }
 
   function mergeFixedAssetPalettes(current,incoming){
@@ -32254,10 +32509,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       throw new Error('invalid fixed assets');
     }
 
-    const incomingColors=cleanImportedAssetColors(incomingColorsRaw||[]);
-    const incomingPalettes=cleanImportedAssetPalettes(
+    const resourceIdRemap=new Map();
+    const incomingColors=cleanImportedAssetColors(
+      incomingColorsRaw||[],
+      resourceIdRemap
+    );
+    let incomingPalettes=cleanImportedAssetPalettes(
       incomingPalettesRaw||[],
-      incomingColors
+      incomingColors,
+      resourceIdRemap
     );
     if(!incomingColors.length && !incomingPalettes.length)throw new Error('empty fixed assets');
 
@@ -32287,7 +32547,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       writeFixedAssetMeta({revision:incomingRevision,updatedAt:Date.now()});
     }else{
-      colorLibrary=mergeFixedAssetColors(colorLibrary,incomingColors);
+      colorLibrary=mergeFixedAssetColors(
+        colorLibrary,
+        incomingColors,
+        resourceIdRemap
+      );
+      incomingPalettes=remapImportedPaletteResourceIds(
+        incomingPalettes,
+        resourceIdRemap
+      );
       const mergedPalettes=mergeFixedAssetPalettes(savedPalettes(),incomingPalettes);
       writeSavedPalettes(mergedPalettes,{touchAssets:false,reason:'fixed-assets-import-merge'});
 
@@ -32596,14 +32864,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const before=resolveFillRef(beforeRef);
 
     const same=
-      selected.id && before?.id
-        ? selected.id===before.id
-        : (
-            selected.type==='solid' &&
-            before?.type==='solid' &&
-            normalizeHex(selected.hex)===
-            normalizeHex(before.hex)
-          );
+      !!before &&
+      fillIdentityKey(ref)===
+      fillIdentityKey(beforeRef);
 
     // 点到当前颜色不退出换色模式，继续允许用户试别的颜色。
     if(same){
@@ -32787,6 +33050,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
 
       const displayName=f.library ? f.name : (findLibraryColorByHex(f.hex)?.name || f.hex);
+      const aliasLabel=f.library
+        ? sameHexAliasLabel(f.resource)
+        : '';
       const copyValue=f.id || f.hex;
 
       if(!replaceConflict){
@@ -32798,7 +33064,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       d.innerHTML=`
         <span class="palette-drag-grip" draggable="true" data-index="${i}" title="按住这里拖动排序">⋮⋮</span>
         <div class="palette-name-row">
-          <span class="palette-lib-name" title="${displayName}">${displayName}</span>
+          <span class="palette-lib-name" title="${displayName}">${displayName}${aliasLabel?`<span class="same-hex-alias-badge">${aliasLabel}</span>`:''}</span>
           <span class="palette-ref-tip">${f.id?'ID '+f.id:'HEX '+f.hex}${f.id && f.type==='solid' && f.hex ? ' · '+f.hex : ''}</span>
         </div>
         <div class="swatch-color"></div>
@@ -34619,7 +34885,228 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ${content}
     </svg>`;
 
-    return {svg,width,height};
+    return {svg,width,height,mode:'standard'};
+  }
+
+  function formatDimensionCentimeters(lanes){
+    const centimeters=
+      Math.max(0,Number(lanes)||0) *
+      Math.max(.1,Number(state.laneSize)||1) /
+      10;
+
+    return centimeters
+      .toFixed(2)
+      .replace(/\.00$/,'')
+      .replace(/(\.\d)0$/,'$1');
+  }
+
+  function spreadDimensionLabels(centers,min,max,gap){
+    if(!centers.length)return [];
+
+    const out=[];
+
+    centers.forEach((center,index)=>{
+      out[index]=Math.max(
+        index===0?min:out[index-1]+gap,
+        Math.min(max,center)
+      );
+    });
+
+    if(out[out.length-1]>max){
+      out[out.length-1]=max;
+
+      for(let i=out.length-2;i>=0;i--){
+        out[i]=Math.min(out[i],out[i+1]-gap);
+      }
+    }
+
+    if(out[0]<min){
+      const shift=min-out[0];
+      for(let i=0;i<out.length;i++)out[i]+=shift;
+    }
+
+    return out;
+  }
+
+  function dimensionExportSegments(){
+    const mapping=activePatternMapping();
+    const {rects,total}=patternRects(
+      mapping,
+      state.stripes,
+      state.repeatCount
+    );
+    const merged=[];
+
+    rects.forEach(rect=>{
+      const identity=fillIdentityKey(rect.fillRef);
+      const previous=merged[merged.length-1];
+
+      // 只有同一张资源卡连续相邻才合并尺寸；
+      // 同 HEX、不同名字的资源必须保留各自的区段身份。
+      if(
+        previous &&
+        previous.identity &&
+        previous.identity===identity &&
+        previous.pos+previous.size===rect.pos
+      ){
+        previous.size+=rect.size;
+        return;
+      }
+
+      const fill=resolveFillRef(rect.fillRef);
+
+      merged.push({
+        ...rect,
+        identity,
+        fill,
+        name:fill?.name || roleLabel(rect.role),
+        centimeters:formatDimensionCentimeters(rect.size)
+      });
+    });
+
+    return {segments:merged,total,mapping};
+  }
+
+  function buildDimensionDisplayExportSvg(){
+    const {segments,total,mapping}=dimensionExportSegments();
+    if(!segments.length)throw new Error('NO_DIMENSIONS');
+
+    const horizontal=state.orientation!=='vertical';
+    const margin=48;
+    const metaY=42;
+    const contentTop=92;
+    const labelGap=32;
+    let width=1800;
+    let height=1100;
+    let sampleX=margin;
+    let sampleY=contentTop;
+    let sampleW;
+    let sampleH;
+
+    if(horizontal){
+      height=Math.max(
+        1100,
+        contentTop+margin+segments.length*labelGap
+      );
+      sampleW=1240;
+      sampleH=height-contentTop-margin;
+    }else{
+      width=Math.max(
+        1800,
+        margin*2+segments.length*92
+      );
+      sampleW=width-margin*2;
+      sampleH=680;
+    }
+
+    const sampleRight=sampleX+sampleW;
+    const sampleBottom=sampleY+sampleH;
+    const meta=exportCanvasMetaText();
+    const laneSize=Number(state.laneSize)||1;
+    let annotations='';
+
+    if(horizontal){
+      const bracketX=sampleRight+30;
+      const labelX=sampleRight+82;
+      const centers=segments.map(segment=>
+        sampleY+(segment.pos+segment.size/2)/total*sampleH
+      );
+      const labelYs=spreadDimensionLabels(
+        centers,
+        sampleY+16,
+        sampleBottom-16,
+        labelGap
+      );
+
+      segments.forEach((segment,index)=>{
+        const y1=sampleY+segment.pos/total*sampleH;
+        const y2=sampleY+(segment.pos+segment.size)/total*sampleH;
+        const center=centers[index];
+        const labelY=labelYs[index];
+        const solid=segment.fill?.type==='solid'
+          ? normalizeHex(segment.fill.hex)||'#A5ADB1'
+          : '#A5ADB1';
+
+        annotations+=`
+          <g data-dimension-segment="${index+1}" data-dimension-centimeters="${segment.centimeters}">
+            <line x1="${bracketX}" y1="${y1}" x2="${bracketX}" y2="${y2}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <line x1="${bracketX-7}" y1="${y1}" x2="${bracketX+7}" y2="${y1}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <line x1="${bracketX-7}" y1="${y2}" x2="${bracketX+7}" y2="${y2}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <path d="M ${bracketX+8} ${center} L ${labelX-16} ${labelY}"
+                  fill="none" stroke="#C2C8CB" stroke-width="1.15"/>
+            <circle cx="${labelX}" cy="${labelY-5}" r="5" fill="${solid}"/>
+            <text x="${labelX+13}" y="${labelY}"
+                  font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+                  font-size="15" font-weight="700" fill="#465158">${escapeXmlText(segment.centimeters)} cm</text>
+            <text x="${labelX+104}" y="${labelY}"
+                  font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+                  font-size="12.5" font-weight="500" fill="#7A858A">${escapeXmlText(segment.role)} · ${escapeXmlText(segment.name)}</text>
+          </g>`;
+      });
+    }else{
+      const bracketY=sampleBottom+28;
+      const centers=segments.map(segment=>
+        sampleX+(segment.pos+segment.size/2)/total*sampleW
+      );
+      const labelXs=spreadDimensionLabels(
+        centers,
+        sampleX+42,
+        sampleRight-42,
+        88
+      );
+
+      segments.forEach((segment,index)=>{
+        const x1=sampleX+segment.pos/total*sampleW;
+        const x2=sampleX+(segment.pos+segment.size)/total*sampleW;
+        const center=centers[index];
+        const labelX=labelXs[index];
+
+        annotations+=`
+          <g data-dimension-segment="${index+1}" data-dimension-centimeters="${segment.centimeters}">
+            <line x1="${x1}" y1="${bracketY}" x2="${x2}" y2="${bracketY}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <line x1="${x1}" y1="${bracketY-7}" x2="${x1}" y2="${bracketY+7}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <line x1="${x2}" y1="${bracketY-7}" x2="${x2}" y2="${bracketY+7}"
+                  stroke="#8E989D" stroke-width="1.4"/>
+            <path d="M ${center} ${bracketY+8} L ${labelX} ${bracketY+40}"
+                  fill="none" stroke="#C2C8CB" stroke-width="1.15"/>
+            <text x="${labelX}" y="${bracketY+65}" text-anchor="middle"
+                  font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+                  font-size="15" font-weight="700" fill="#465158">${escapeXmlText(segment.centimeters)} cm</text>
+            <text x="${labelX}" y="${bracketY+86}" text-anchor="middle"
+                  font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+                  font-size="12" font-weight="500" fill="#7A858A">${escapeXmlText(segment.role)} · ${escapeXmlText(segment.name)}</text>
+          </g>`;
+      });
+    }
+
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg"
+                    width="${width}" height="${height}"
+                    viewBox="0 0 ${width} ${height}">
+      <rect width="100%" height="100%" fill="#ffffff"/>
+      <text x="${margin}" y="${metaY}"
+            font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+            font-size="23" font-weight="550" fill="#4F5B62">${escapeXmlText(meta)}</text>
+      <text x="${margin}" y="${metaY+28}"
+            font-family="Arial, Microsoft YaHei, PingFang SC, sans-serif"
+            font-size="12.5" font-weight="450" fill="#8A9499">每段尺寸＝路数 × ${escapeXmlText(laneSize)} mm · 已换算为厘米</text>
+      <rect x="${sampleX-3}" y="${sampleY-3}" width="${sampleW+6}" height="${sampleH+6}"
+            rx="5" fill="#FFFFFF" stroke="#E5E8EA" stroke-width="1.5"/>
+      ${nestedPatternSvg(mapping,sampleX,sampleY,sampleW,sampleH)}
+      ${annotations}
+    </svg>`;
+
+    return {
+      svg,
+      width,
+      height,
+      mode:'dimensions',
+      segmentCount:segments.length
+    };
   }
 
   function svgExportToPngBlob(svg,width,height,scale=2){
@@ -34682,7 +35169,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     let exportData;
 
     try{
-      exportData=buildCurrentDisplayExportSvg();
+      exportData=
+        copyImageMode==='dimensions'
+          ? buildDimensionDisplayExportSvg()
+          : buildCurrentDisplayExportSvg();
     }catch(err){
       if(err?.message==='NO_FAVORITES'){
         toast('收藏总览里还没有内容');
@@ -34690,6 +35180,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       if(err?.message==='NO_COMPARE'){
         toast('请先选择两套方案进行对比');
+        return;
+      }
+      if(err?.message==='NO_DIMENSIONS'){
+        toast('当前条纹还没有可标注的尺寸');
         return;
       }
       console.error(err);
@@ -34705,11 +35199,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     try{
       // Promise<Blob> 直接交给 ClipboardItem：
       // 不生成本地文件，也不会把 PNG 长期留在应用状态里。
+      const exportScale=
+        exportData.mode==='dimensions'
+          ? Math.max(
+              1,
+              Math.min(
+                2,
+                Math.sqrt(
+                  18000000/
+                  Math.max(1,exportData.width*exportData.height)
+                )
+              )
+            )
+          : 2;
+
       const pngPromise=svgExportToPngBlob(
         exportData.svg,
         exportData.width,
         exportData.height,
-        2
+        exportScale
       );
 
       const item=new ClipboardItem({
@@ -34724,7 +35232,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         copyBtn.classList.add('copy-done');
         setTimeout(()=>copyBtn.classList.remove('copy-done'),420);
       }
-      toast('展示图已复制，可直接 Ctrl+V 粘贴');
+      toast(
+        exportData.mode==='dimensions'
+          ? `尺寸图已复制 · 共标注 ${exportData.segmentCount} 段`
+          : '展示图已复制，可直接 Ctrl+V 粘贴'
+      );
     }catch(err){
       console.error('Clipboard image copy failed:',err);
 
@@ -37966,9 +38478,12 @@ ${sheets.join('\n')}
   },true);
 
   $('#favoriteCurrentCanvasBtn').onclick=favoriteCurrentCanvas;
-    $('#favoriteCanvasBtn').onclick=showFavoriteCanvas;
+  $('#favoriteCanvasBtn').onclick=showFavoriteCanvas;
   $('#compareCanvasBtn').onclick=showCompareCanvas;
+  $('#copyImageStandardMode').onclick=()=>setCopyImageMode('standard');
+  $('#copyImageDimensionMode').onclick=()=>setCopyImageMode('dimensions');
   $('#copyCanvasImageBtn').onclick=copyCurrentDisplayAsImage;
+  updateCopyImageModeUi();
   $('#applySchemePreviewBtn').onclick=applySchemePreview;
   $('#clearSchemePreviewBtn').onclick=()=>clearSchemePreview();
 
@@ -39895,7 +40410,11 @@ $('#addStripeBtn').onclick=()=>{
         : null
     };
 
-    const existing=findLibraryColorByHex(h);
+    const aliases=solidHexAliases(h);
+    const currentResource=
+      replaceMode
+        ? findFillById(state.palette[options.paletteIndex])
+        : null;
     const backdrop=$('#colorNameDialogBackdrop');
     const input=$('#colorNameDialogInput');
     const title=$('#colorNameDialogTitle');
@@ -39905,8 +40424,13 @@ $('#addStripeBtn').onclick=()=>{
     $('#colorNameDialogSwatch').style.background=h;
     $('#colorNameDialogHex').textContent=h;
 
-    // 已存在的 HEX 自动带出原名字；新颜色允许留空。
-    input.value=existing?.name || '';
+    // 同 HEX 可以有多个名字，不能再自动拿第一张色卡的名字覆盖用户意图。
+    // 只有编辑当前这张同色资源时才带出它自己的名字。
+    input.value=
+      currentResource?.type!=='texture' &&
+      normalizeHex(currentResource?.hex)===h
+        ? currentResource.name||''
+        : '';
     input.placeholder='可留空，系统自动命名';
 
     if(title){
@@ -39919,8 +40443,8 @@ $('#addStripeBtn').onclick=()=>{
     if(subtitle){
       subtitle.textContent=
         replaceMode
-          ? '名字可留空；保存为颜色资源后替换当前色板位置'
-          : '名字可留空；加入当前色板并写入色库、分配 ID';
+          ? `名字可留空；按独立色卡替换当前位置${aliases.length?` · 色库已有 ${aliases.length} 个同 HEX 名称`:''}`
+          : `同一个 HEX 可以保存多个名字${aliases.length?` · 当前已有 ${aliases.length} 个`:''}`;
     }
 
     if(confirm){
@@ -39971,61 +40495,48 @@ $('#addStripeBtn').onclick=()=>{
       return;
     }
 
-    if(action.mode==='replace'){
-      const duplicate=
-        findPaletteDuplicateSolidHex(
-          h,
-          action.paletteIndex
-        );
-
-      if(duplicate){
-        toast('当前色板已经有这个颜色，不能重复替换');
-
-        const dialog=$(
-          '#colorNameDialogBackdrop .color-name-dialog'
-        );
-
-        dialog?.animate(
-          [
-            {transform:'translateX(0)'},
-            {transform:'translateX(-4px)',offset:.3},
-            {transform:'translateX(4px)',offset:.6},
-            {transform:'translateX(0)'}
-          ],
-          {
-            duration:240,
-            easing:'ease-out'
-          }
-        );
-
-        return;
-      }
-    }
-
     const typedName=
       ($('#colorNameDialogInput').value||'').trim();
 
-    // 名字现在是可选项：
-    // 新资源留空时由系统自动分配一个不重复的名字。
-    const existing=findLibraryColorByHex(h);
+    const currentPaletteResource=
+      action.mode==='replace'
+        ? findFillById(state.palette[action.paletteIndex])
+        : null;
 
-    let lib=existing || null;
+    let lib=typedName
+      ? findExactLibraryResource({
+          type:'solid',
+          name:typedName,
+          hex:h
+        })
+      : null;
+
+    // 留空代表“不特意建立同色别名”：编辑时保留当前资源，
+    // 新增时复用已有同 HEX 资源，避免连续误点制造垃圾数据。
+    if(
+      !lib &&
+      !typedName &&
+      currentPaletteResource?.type!=='texture' &&
+      normalizeHex(currentPaletteResource?.hex)===h
+    ){
+      lib=currentPaletteResource;
+    }
+
+    if(!lib && !typedName && action.mode==='add'){
+      lib=solidHexAliases(h)[0] || null;
+    }
+
     let created=false;
 
     const finalName=
       typedName ||
-      existing?.name ||
+      lib?.name ||
       generateSystemColorName();
 
     // 所有真正写入都从这里开始，因此一步撤销即可恢复 palette + library。
     pushHistory();
 
-    if(lib){
-      // 用户明确输入名字时，保留旧逻辑：允许同步修正色库名字。
-      if(typedName && lib.name!==typedName){
-        lib.name=typedName;
-      }
-    }else{
+    if(!lib){
       lib={
         id:nextResourceId('solid'),
         type:'solid',
@@ -40041,9 +40552,19 @@ $('#addStripeBtn').onclick=()=>{
 
     if(action.mode==='replace'){
       paletteIndex=action.paletteIndex;
+      const otherIndex=state.palette.findIndex((ref,index)=>
+        index!==paletteIndex &&
+        fillIdentityKey(ref)===fillIdentityKey(lib.id)
+      );
 
-      // 直接替换原位置，不额外插入，不改变当前色板排序。
-      state.palette[paletteIndex]=lib.id;
+      if(otherIndex>=0){
+        // 选中同一张已有色卡时对调位置，色板中不会生成真正的重复项。
+        [state.palette[paletteIndex],state.palette[otherIndex]]=
+          [state.palette[otherIndex],state.palette[paletteIndex]];
+      }else{
+        // 同 HEX、不同 ID 是合法的同色异名，直接替换当前位置。
+        state.palette[paletteIndex]=lib.id;
+      }
     }else{
       const rawIndex=state.palette.findIndex(ref=>{
         const f=resolveFillRef(ref);
@@ -40126,8 +40647,8 @@ $('#addStripeBtn').onclick=()=>{
 
     toast(
       action.mode==='replace'
-        ? `已替换色板并入库：${lib.name} · ID ${lib.id}；可撤销`
-        : `已加入色板并入库：${lib.name} · ID ${lib.id}`
+        ? `已替换色板：${lib.name} · ID ${lib.id}；可撤销`
+        : `${created?'已加入色板并入库':'已定位已有色卡'}：${lib.name} · ID ${lib.id}`
     );
   }
 
