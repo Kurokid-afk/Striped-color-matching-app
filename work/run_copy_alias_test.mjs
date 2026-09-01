@@ -168,6 +168,54 @@ window.addEventListener('load', async () => {
     saveColorLibrary();
     renderAll();
 
+    const libraryBeforeReplacementCleanup = deepClone(colorLibrary);
+    const palettesBeforeReplacementCleanup = deepClone(savedPalettes());
+    const paletteBeforeReplacementCleanup = deepClone(state.palette);
+    const rolesBeforeReplacementCleanup = deepClone(state.roles);
+    const stripesBeforeReplacementCleanup = deepClone(state.stripes);
+    const activeBeforeReplacementCleanup = state.activeSavedPaletteId;
+    const nameBeforeReplacementCleanup = state.paletteName;
+
+    colorLibrary.push({ id: 'C700', type: 'solid', name: '待替换旧色', hex: '#765432' });
+    writeSavedPalettes([
+      { id: 'pal-cleanup', name: '清理测试', colors: ['C700'], savedAt: 1 }
+    ], { touchAssets: false, reason: 'replacement-cleanup-test' });
+    state.activeSavedPaletteId = 'pal-cleanup';
+    state.paletteName = '清理测试';
+    state.palette = ['C700'];
+    state.roles = {
+      A: { fillId: 'C003', color: '#EEE9DE', name: '米白', locked: false }
+    };
+    state.stripes = [{ lanes: 1, role: 'A', _sortId: 'cleanup-a' }];
+    openColorNameDialog('#EEE9DE', { mode: 'replace', paletteIndex: 0 });
+    document.querySelector('#colorNameDialogInput').value = '米白';
+    confirmNamedColorToPalette();
+    check('replaced orphan color is removed from library', !findFillById('C700'));
+    check('replaced orphan color does not fall into ungrouped', !buildLibraryGroups().find(group => group.key === 'ungrouped')?.items.some(item => item.id === 'C700'));
+
+    colorLibrary.push({ id: 'C701', type: 'solid', name: '共享旧色', hex: '#654321' });
+    writeSavedPalettes([
+      { id: 'pal-cleanup-shared-a', name: '共享甲', colors: ['C701'], savedAt: 1 },
+      { id: 'pal-cleanup-shared-b', name: '共享乙', colors: ['C701'], savedAt: 2 }
+    ], { touchAssets: false, reason: 'replacement-cleanup-shared-test' });
+    state.activeSavedPaletteId = 'pal-cleanup-shared-a';
+    state.paletteName = '共享甲';
+    state.palette = ['C701'];
+    openColorNameDialog('#EEE9DE', { mode: 'replace', paletteIndex: 0 });
+    document.querySelector('#colorNameDialogInput').value = '米白';
+    confirmNamedColorToPalette();
+    check('replaced color still used by another palette is preserved', !!findFillById('C701'));
+
+    colorLibrary = libraryBeforeReplacementCleanup;
+    writeSavedPalettes(palettesBeforeReplacementCleanup, { touchAssets: false, reason: 'replacement-cleanup-test-restore' });
+    state.palette = paletteBeforeReplacementCleanup;
+    state.roles = rolesBeforeReplacementCleanup;
+    state.stripes = stripesBeforeReplacementCleanup;
+    state.activeSavedPaletteId = activeBeforeReplacementCleanup;
+    state.paletteName = nameBeforeReplacementCleanup;
+    saveColorLibrary();
+    renderAll();
+
     setCopyImageMode('standard', { persist: false });
     const modeSwitchBefore = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();
     void document.querySelector('#copyImageModeSwitch')?.offsetWidth;

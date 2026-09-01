@@ -45,6 +45,7 @@ window.addEventListener('load',async()=>{
     };
     await toLibrary;
     const libraryFinal=getComputedStyle(library).translate;
+    const stickyGroupVisibleInLibrary=!$('#libraryStickyGroup')?.hidden;
 
     const toDesign=showDesignPage();
     await waitUntil(()=>design.getAnimations().length>0);
@@ -56,6 +57,7 @@ window.addEventListener('load',async()=>{
       outgoingFrames:motionFrames(library)
     };
     await toDesign;
+    const stickyGroupHiddenAfterReturn=$('#libraryStickyGroup')?.hidden===true;
     state.favorites=[captureFavoriteEntry(state.roles,'motion-test')];
     const canvasWidth=$('.canvas-wrap').getBoundingClientRect().width;
     const toFavorites=showFavoriteCanvas();
@@ -269,6 +271,8 @@ window.addEventListener('load',async()=>{
       pageBackMid,
       stageWidth,
       libraryFinal,
+      stickyGroupVisibleInLibrary,
+      stickyGroupHiddenAfterReturn,
       canvasWidth,
       canvasMid,
       canvasBackMid,
@@ -353,6 +357,8 @@ if(
   framePixels(result.pageBackMid.incomingFrames[0]?.translate)<result.stageWidth*.9 ||
   framePixels(result.pageBackMid.outgoingFrames.at(-1)?.translate)<result.stageWidth*.9 ||
   result.pageMid.incomingTranslate==='none' ||
+  !result.stickyGroupVisibleInLibrary ||
+  !result.stickyGroupHiddenAfterReturn ||
   !hasVisibleTranslate(result.canvasMid.incomingFrames) ||
   !hasVisibleTranslate(result.canvasMid.outgoingFrames.slice().reverse()) ||
   framePixels(result.canvasMid.incomingFrames[0]?.translate)<result.canvasWidth*.9 ||

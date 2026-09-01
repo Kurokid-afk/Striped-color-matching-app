@@ -165,6 +165,85 @@ setTimeout(async()=>{
     renderLibraryTable();
     await wait(30);
 
+    const libraryScroller=document.querySelector('.library-table-wrap');
+    const libraryHead=document.querySelector('.library-table thead th');
+    const firstStickyGroup=document.querySelector(
+      '.library-group-row[data-group-key="palette_0"]'
+    );
+    const nextStickyGroup=document.querySelector(
+      '.library-group-row[data-group-key="ungrouped"]'
+    );
+    const stickyGroupOverlay=document.querySelector('#libraryStickyGroup');
+    libraryScroller.style.setProperty('max-height','180px','important');
+    libraryScroller.style.setProperty('overflow-y','auto','important');
+    syncLibraryStickyHeaderOffset();
+    libraryScroller.scrollTop=95;
+    onLibraryTableScroll();
+    await wait(30);
+
+    const stickyBoundary=
+      libraryScroller.getBoundingClientRect().top+
+      Number.parseFloat(
+        getComputedStyle(libraryScroller)
+          .getPropertyValue('--library-table-head-height')
+      );
+    const firstStickyRect=stickyGroupOverlay
+      .querySelector('.library-group-head')
+      .getBoundingClientRect();
+    const firstGroupPinned=Math.abs(firstStickyRect.top-stickyBoundary)<2;
+
+    libraryScroller.scrollTop=Math.max(
+      0,
+      libraryScroller.scrollTop+
+        nextStickyGroup.getBoundingClientRect().top-
+        stickyBoundary+
+        2
+    );
+    onLibraryTableScroll();
+    await wait(30);
+    const nextStickyRect=stickyGroupOverlay
+      .querySelector('.library-group-head')
+      .getBoundingClientRect();
+    const paintedAtStickyTop=document.elementFromPoint(
+      nextStickyRect.left+20,
+      stickyBoundary+Math.min(12,nextStickyRect.height/2)
+    )?.closest('#libraryStickyGroup');
+    const stickyGroupResult={
+      position:getComputedStyle(stickyGroupOverlay).position,
+      firstGroupPinned,
+      nextGroupPinned:Math.abs(nextStickyRect.top-stickyBoundary)<2,
+      nextGroupReplacesPrevious:
+        paintedAtStickyTop===stickyGroupOverlay &&
+        stickyGroupOverlay.dataset.groupKey==='ungrouped',
+      activeGroupKey:stickyGroupOverlay.dataset.groupKey,
+      nextOriginalTop:nextStickyGroup.getBoundingClientRect().top,
+      stickyBoundary,
+      firstTop:firstStickyRect.top,
+      nextTop:nextStickyRect.top,
+      scrollTop:libraryScroller.scrollTop,
+      overlayTransform:stickyGroupOverlay.style.transform,
+      scrollHeight:libraryScroller.scrollHeight,
+      clientHeight:libraryScroller.clientHeight,
+      headHeight:getComputedStyle(libraryScroller)
+        .getPropertyValue('--library-table-head-height')
+        .trim()
+    };
+
+    stickyGroupOverlay.querySelector('.library-group-head').click();
+    await wait(380);
+    stickyGroupResult.stickyControlCollapsed=
+      nextStickyGroup.classList.contains('collapsed') &&
+      stickyGroupOverlay.classList.contains('collapsed');
+
+    nextStickyGroup.querySelector('.library-group-head').click();
+    await wait(380);
+    stickyGroupResult.stickyControlExpanded=
+      !nextStickyGroup.classList.contains('collapsed');
+
+    libraryScroller.scrollTop=0;
+    libraryScroller.style.removeProperty('max-height');
+    libraryScroller.style.removeProperty('overflow-y');
+
     motionLog.length=0;
     const firstGroupButton=document.querySelector(
       '.library-group-head[data-group-key="palette_0"]'
@@ -266,6 +345,7 @@ setTimeout(async()=>{
       usageResult,
       calmResult,
       selectedHighlightKept,
+      stickyGroupResult,
       foldMotion,
       reflowMotion,
       expandMotion,
@@ -322,6 +402,13 @@ if(
   result.calmResult.rightbarFade ||
   result.calmResult.waveExists ||
   !result.selectedHighlightKept ||
+  result.stickyGroupResult.position!=='fixed' ||
+  !result.stickyGroupResult.firstGroupPinned ||
+  !result.stickyGroupResult.nextGroupPinned ||
+  !result.stickyGroupResult.nextGroupReplacesPrevious ||
+  !result.stickyGroupResult.stickyControlCollapsed ||
+  !result.stickyGroupResult.stickyControlExpanded ||
+  !result.stickyGroupResult.headHeight.endsWith('px') ||
   result.foldMotion.animations<1 ||
   !result.foldMotion.hasClip ||
   result.foldMotion.hasOpacityFade ||

@@ -616,7 +616,7 @@
     }
 
 
-  .library-group-row td{
+  .library-group-row > :is(td,th){
     padding:0!important;
     border-bottom:1px solid var(--line)!important;
     background:#f5f6f8;
@@ -2471,7 +2471,7 @@
     background:#f8f9fb!important;
   }
 
-  .library-group-row td{
+  .library-group-row > :is(td,th){
     border-bottom:0!important;
     background:#f4f6f8!important;
   }
@@ -2903,7 +2903,7 @@
     background:#f2f4f6;
   }
 
-  .library-group-row td{
+  .library-group-row > :is(td,th){
     background:#f1f3f5!important;
     border:0!important;
   }
@@ -19560,6 +19560,62 @@
     #schemes{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   }
 
+  /* 色库分组随列表滚动吸顶：始终停在列标题下方，下一组自然顶替。 */
+  .library-table-wrap{
+    --library-table-head-height:42px;
+    position:relative!important;
+    isolation:isolate;
+  }
+
+  .library-table thead th{
+    z-index:6!important;
+    box-shadow:0 5px 9px -9px rgba(35,44,49,.42);
+  }
+
+  .library-table tbody .library-group-row > th{
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    background:#f1f3f5!important;
+    box-shadow:0 7px 10px -10px rgba(35,44,49,.46);
+    color:var(--text)!important;
+    padding:0!important;
+    text-align:left!important;
+  }
+
+  .library-sticky-group-overlay{
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:160;
+    width:auto;
+    height:auto;
+    overflow:hidden;
+    pointer-events:none;
+    transform:none!important;
+    border-radius:9px;
+  }
+
+  .library-sticky-group-overlay[hidden]{
+    display:none!important;
+  }
+
+  .library-sticky-group-overlay .library-group-head{
+    width:100%;
+    min-width:100%;
+    pointer-events:auto;
+    transform:none!important;
+  }
+
+  .library-sticky-group-overlay.collapsed .library-group-arrow{
+    transform:rotate(-90deg);
+  }
+
+  .library-table tbody .library-group-row .library-group-head:hover,
+  .library-table tbody .library-group-row .library-group-head:active{
+    transform:none!important;
+  }
+
   @media (max-height:700px){
     .center{
       --scheme-panel-height:190px;
@@ -20039,6 +20095,7 @@
             <button class="btn soft" id="addTextureBtn" title="点击选择图片，或直接把图片拖到这里">+ 上传 / 拖入花灰纹理</button>
           </div>
           <div class="library-table-wrap">
+            <div class="library-sticky-group-overlay" id="libraryStickyGroup" hidden></div>
             <table class="library-table">
               <thead>
                 <tr><th style="width:34px">排序</th><th style="width:64px">预览</th><th>名字</th><th>ID</th><th>类型</th><th>HEX</th><th>明暗</th><th>缩放</th><th>操作</th></tr>
@@ -31230,6 +31287,52 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return {count:matches.length,matches};
   }
 
+  function mappingUsesLibraryResourceId(mapping,resourceId){
+    const key=String(resourceId||'').toUpperCase();
+    if(!key || !mapping)return false;
+
+    return Object.values(mapping).some(value=>{
+      if(!value || typeof value!=='object')return false;
+      const ref=value.fillId || value.id || '';
+      return String(ref).toUpperCase()===key;
+    });
+  }
+
+  function removeReplacedLibraryResourceIfUnused(resourceId){
+    const resource=findFillById(resourceId);
+    if(!resource)return false;
+
+    const key=String(resource.id||'').toUpperCase();
+    const usedByCurrentPalette=(state.palette||[]).some(ref=>
+      String(normalizedPaletteRef(ref)||'').toUpperCase()===key
+    );
+    const usedByRole=roleNames().some(role=>
+      String(roleFillRef(state.roles?.[role])||'').toUpperCase()===key
+    );
+    const usedByFavorite=(state.favorites||[]).some(item=>
+      mappingUsesLibraryResourceId(item?.mapping,key)
+    );
+    const usedByScheme=(state.schemes||[]).some(item=>
+      mappingUsesLibraryResourceId(item?.mapping,key)
+    );
+    const usedBySavedPalette=listSavedPaletteUsage(key).count>0;
+
+    if(
+      usedByCurrentPalette ||
+      usedByRole ||
+      usedByFavorite ||
+      usedByScheme ||
+      usedBySavedPalette
+    ){
+      return false;
+    }
+
+    colorLibrary=colorLibrary.filter(item=>
+      String(item?.id||'').toUpperCase()!==key
+    );
+    return true;
+  }
+
 
   function paletteGroupIndex(groupKey){
     const m=/^palette_(\d+)$/.exec(String(groupKey||''));
@@ -31669,6 +31772,182 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   const libraryGroupMotionBusy=new Set();
 
+  async function toggleLibraryGroup(key){
+    if(libraryGroupMotionBusy.has(key))return;
+    if(($('#librarySearch')?.value||'').trim())return;
+
+    libraryGroupMotionBusy.add(key);
+    const currentlyCollapsed=collapsedLibraryGroups.has(key);
+    const beforeRects=captureLibraryTableRowRects();
+    const groupHeader=$(
+      `.library-group-row[data-group-key="${key}"]`
+    );
+
+    try{
+      if(!currentlyCollapsed){
+        const rows=$$('.library-resource-row,.library-empty-group')
+          .filter(row=>row.dataset.groupKey===key && !row.classList.contains('group-hidden'));
+
+        await animateLibraryRowsFoldOut(rows);
+        collapsedLibraryGroups.add(key);
+        groupHeader?.classList.add('collapsed');
+        rows.forEach(row=>row.classList.add('group-hidden'));
+        animateLibraryTableReflow(beforeRects);
+      }else{
+        const rows=$$('.library-resource-row,.library-empty-group')
+          .filter(row=>row.dataset.groupKey===key);
+
+        collapsedLibraryGroups.delete(key);
+        groupHeader?.classList.remove('collapsed');
+        rows.forEach(row=>row.classList.remove('group-hidden'));
+        animateLibraryTableReflow(beforeRects);
+        animateLibraryRowsExpandIn(rows);
+      }
+    }finally{
+      libraryGroupMotionBusy.delete(key);
+      syncLibraryStickyGroup();
+    }
+  }
+
+  function syncLibraryStickyHeaderOffset(){
+    const wrap=$('.library-table-wrap');
+    const head=wrap?.querySelector('.library-table thead th');
+    if(!wrap || !head)return;
+
+    const table=wrap.querySelector('.library-table');
+    const spacing=String(getComputedStyle(table).borderSpacing||'0')
+      .split(/\s+/)
+      .map(value=>Number.parseFloat(value)||0);
+    const verticalSpacing=spacing[1] ?? spacing[0] ?? 0;
+    const height=Math.ceil(
+      head.getBoundingClientRect().height+verticalSpacing
+    );
+    if(height>0){
+      wrap.style.setProperty(
+        '--library-table-head-height',
+        `${height}px`
+      );
+    }
+  }
+
+  let libraryStickyGroupFrame=0;
+  let libraryStickyGroupSuppressed=false;
+
+  function positionLibraryStickyGroup(){
+    const wrap=$('.library-table-wrap');
+    const overlay=$('#libraryStickyGroup');
+    if(!wrap || !overlay)return;
+
+    const wrapRect=wrap.getBoundingClientRect();
+    const headOffset=Number.parseFloat(
+      getComputedStyle(wrap)
+        .getPropertyValue('--library-table-head-height')
+    ) || 42;
+    const boundary=wrapRect.top+headOffset;
+
+    overlay.style.top=`${Math.round(boundary)}px`;
+    overlay.style.left=`${Math.round(wrapRect.left)}px`;
+    overlay.style.width=`${Math.round(wrap.clientWidth)}px`;
+  }
+
+  function onLibraryTableScroll(){
+    positionLibraryStickyGroup();
+    syncLibraryStickyGroup();
+  }
+
+  function syncLibraryStickyGroup(){
+    libraryStickyGroupFrame=0;
+    syncLibraryStickyHeaderOffset();
+
+    const wrap=$('.library-table-wrap');
+    const overlay=$('#libraryStickyGroup');
+    if(!wrap || !overlay)return;
+
+    if(overlay.parentElement!==document.body){
+      document.body.appendChild(overlay);
+    }
+
+    const library=$('#colorLibraryPage');
+    if(
+      libraryStickyGroupSuppressed ||
+      currentAppPage!=='library' &&
+      !library?.classList.contains('show')
+    ){
+      overlay.hidden=true;
+      return;
+    }
+
+    wrap.onscroll=onLibraryTableScroll;
+    if(library)library.onscroll=onLibraryTableScroll;
+
+    const rows=$$('.library-group-row').filter(row=>
+      !row.classList.contains('group-hidden')
+    );
+
+    if(!rows.length){
+      overlay.hidden=true;
+      overlay.replaceChildren();
+      overlay.dataset.groupKey='';
+      overlay._sourceButton=null;
+      return;
+    }
+
+    const wrapRect=wrap.getBoundingClientRect();
+    const headOffset=Number.parseFloat(
+      getComputedStyle(wrap)
+        .getPropertyValue('--library-table-head-height')
+    ) || 42;
+    const boundary=wrapRect.top+headOffset;
+    let current=rows[0];
+
+    rows.forEach(row=>{
+      if(row.getBoundingClientRect().top<=boundary+1){
+        current=row;
+      }
+    });
+
+    const key=current.dataset.groupKey||'';
+    const original=current.querySelector('.library-group-head');
+    if(!original){
+      overlay.hidden=true;
+      return;
+    }
+
+    overlay.hidden=false;
+    positionLibraryStickyGroup();
+    overlay.classList.toggle(
+      'collapsed',
+      current.classList.contains('collapsed')
+    );
+
+    if(
+      overlay.dataset.groupKey!==key ||
+      overlay._sourceButton!==original
+    ){
+      const clone=original.cloneNode(true);
+      clone.dataset.stickyCopy='1';
+      clone.onclick=()=>{
+        void toggleLibraryGroup(key);
+      };
+      overlay.replaceChildren(clone);
+      overlay.dataset.groupKey=key;
+      overlay._sourceButton=original;
+    }
+  }
+
+  function scheduleLibraryStickyGroupSync(){
+    if(libraryStickyGroupFrame)return;
+    libraryStickyGroupFrame=requestAnimationFrame(
+      syncLibraryStickyGroup
+    );
+  }
+
+  window.addEventListener(
+    'resize',
+    scheduleLibraryStickyGroupSync,
+    {passive:true}
+  );
+
   function renderLibraryTable(){
     const box=$('#libraryTableBody');
     if(!box)return;
@@ -31697,14 +31976,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(collapsed)header.classList.add('collapsed');
 
       header.innerHTML=`
-        <td colspan="9">
+        <th colspan="9" scope="rowgroup">
           <button class="library-group-head" type="button" data-group-key="${group.key}">
             <span class="library-group-arrow">▼</span>
             <span>${group.name}</span>
             <span class="library-group-count">${group.items.length}</span>
             <span class="library-group-source">${group.key==='ungrouped'?'未被任何已保存色板引用':'来自已保存色板 · 可拖到其他分组同时加入'}</span>
           </button>
-        </td>`;
+        </th>`;
       box.appendChild(header);
 
       const items=q?matchedItems:group.items;
@@ -31765,41 +32044,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
     });
 
-    $$('.library-group-head').forEach(btn=>btn.onclick=async e=>{
-      const key=e.currentTarget.dataset.groupKey;
-      if(libraryGroupMotionBusy.has(key))return;
-      if(($('#librarySearch')?.value||'').trim())return;
+    syncLibraryStickyGroup();
+    scheduleLibraryStickyGroupSync();
 
-      libraryGroupMotionBusy.add(key);
-      const currentlyCollapsed=collapsedLibraryGroups.has(key);
-      const beforeRects=captureLibraryTableRowRects();
-      const groupHeader=$(
-        `.library-group-row[data-group-key="${key}"]`
-      );
-
-      try{
-        if(!currentlyCollapsed){
-          const rows=$$('.library-resource-row,.library-empty-group')
-            .filter(row=>row.dataset.groupKey===key && !row.classList.contains('group-hidden'));
-
-          await animateLibraryRowsFoldOut(rows);
-          collapsedLibraryGroups.add(key);
-          groupHeader?.classList.add('collapsed');
-          rows.forEach(row=>row.classList.add('group-hidden'));
-          animateLibraryTableReflow(beforeRects);
-        }else{
-          const rows=$$('.library-resource-row,.library-empty-group')
-            .filter(row=>row.dataset.groupKey===key);
-
-          collapsedLibraryGroups.delete(key);
-          groupHeader?.classList.remove('collapsed');
-          rows.forEach(row=>row.classList.remove('group-hidden'));
-          animateLibraryTableReflow(beforeRects);
-          animateLibraryRowsExpandIn(rows);
-        }
-      }finally{
-        libraryGroupMotionBusy.delete(key);
-      }
+    box.querySelectorAll('.library-group-head').forEach(btn=>{
+      btn.onclick=e=>{
+        void toggleLibraryGroup(e.currentTarget.dataset.groupKey);
+      };
     });
 
     $$('.library-id-input').forEach(el=>el.onclick=e=>{
@@ -32795,6 +33046,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(currentAppPage==='library' || persistentPageBusy)return;
 
     const library=$('#colorLibraryPage');
+    libraryStickyGroupSuppressed=false;
     suppressAppleLayoutMotion(1200);
 
     // 先在隐藏层完成表格、分组、纹理准备。
@@ -32807,12 +33059,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     await nextUiFrame();
     await switchPersistentPage('library');
+    syncLibraryStickyGroup();
   }
 
   async function showDesignPage(){
     if(currentAppPage==='design' || persistentPageBusy)return;
 
     const library=$('#colorLibraryPage');
+    const stickyGroup=$('#libraryStickyGroup');
+    libraryStickyGroupSuppressed=true;
+    if(stickyGroup)stickyGroup.hidden=true;
     suppressAppleLayoutMotion(1200);
 
     // 设计页也在背后先更新好，再滑回来。
@@ -40781,6 +41037,7 @@ $('#addStripeBtn').onclick=()=>{
     }
 
     let paletteIndex=-1;
+    let replacedResourceId='';
 
     if(action.mode==='replace'){
       paletteIndex=action.paletteIndex;
@@ -40795,6 +41052,12 @@ $('#addStripeBtn').onclick=()=>{
           [state.palette[otherIndex],state.palette[paletteIndex]];
       }else{
         // 同 HEX、不同 ID 是合法的同色异名，直接替换当前位置。
+        if(
+          currentPaletteResource?.id &&
+          currentPaletteResource.id!==lib.id
+        ){
+          replacedResourceId=currentPaletteResource.id;
+        }
         state.palette[paletteIndex]=lib.id;
       }
     }else{
@@ -40823,6 +41086,14 @@ $('#addStripeBtn').onclick=()=>{
         }
       }
     }
+
+    if(action.mode==='replace'){
+      syncActiveSavedPaletteFromCurrent({createIfMissing:true});
+    }
+
+    const removedReplacedResource=
+      !!replacedResourceId &&
+      removeReplacedLibraryResourceIfUnused(replacedResourceId);
 
     saveColorLibrary();
     closeColorNameDialog();
@@ -40879,7 +41150,7 @@ $('#addStripeBtn').onclick=()=>{
 
     toast(
       action.mode==='replace'
-        ? `已替换色板：${lib.name} · ID ${lib.id}；可撤销`
+        ? `已替换色板：${lib.name} · ID ${lib.id}${removedReplacedResource?'；旧色已清理':''}；可撤销`
         : `${created?'已加入色板并入库':'已定位已有色卡'}：${lib.name} · ID ${lib.id}`
     );
   }
