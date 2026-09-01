@@ -40912,12 +40912,11 @@ $('#addStripeBtn').onclick=()=>{
     $('#colorNameDialogSwatch').style.background=h;
     $('#colorNameDialogHex').textContent=h;
 
-    // 同 HEX 可以有多个名字，不能再自动拿第一张色卡的名字覆盖用户意图。
-    // 只有编辑当前这张同色资源时才带出它自己的名字。
+    // 编辑已有色卡时始终保留它自己的名字；用户只改颜色即可直接确认。
+    // 新增颜色仍保持空白，避免拿同 HEX 的其他别名覆盖用户意图。
     input.value=
-      currentResource?.type!=='texture' &&
-      normalizeHex(currentResource?.hex)===h
-        ? currentResource.name||''
+      replaceMode
+        ? currentResource?.name||''
         : '';
     input.placeholder='可留空，系统自动命名';
 
@@ -40931,7 +40930,7 @@ $('#addStripeBtn').onclick=()=>{
     if(subtitle){
       subtitle.textContent=
         replaceMode
-          ? `名字可留空；按独立色卡替换当前位置${aliases.length?` · 色库已有 ${aliases.length} 个同 HEX 名称`:''}`
+          ? `已保留原名称，可直接确认或修改${aliases.length?` · 色库已有 ${aliases.length} 个同 HEX 名称`:''}`
           : `同一个 HEX 可以保存多个名字${aliases.length?` · 当前已有 ${aliases.length} 个`:''}`;
     }
 

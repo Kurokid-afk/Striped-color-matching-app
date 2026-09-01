@@ -188,6 +188,11 @@ window.addEventListener('load', async () => {
     };
     state.stripes = [{ lanes: 1, role: 'A', _sortId: 'cleanup-a' }];
     openColorNameDialog('#EEE9DE', { mode: 'replace', paletteIndex: 0 });
+    check(
+      'editing a different hex keeps the original color name',
+      document.querySelector('#colorNameDialogInput').value === '待替换旧色',
+      document.querySelector('#colorNameDialogInput').value
+    );
     document.querySelector('#colorNameDialogInput').value = '米白';
     confirmNamedColorToPalette();
     check('replaced orphan color is removed from library', !findFillById('C700'));
