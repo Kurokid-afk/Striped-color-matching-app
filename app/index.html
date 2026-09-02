@@ -19560,6 +19560,86 @@
     #schemes{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   }
 
+  /* 色库批量归类：默认保持紧凑，进入批量模式后才显示复选框和操作区。 */
+  .library-batch-bar{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:0;
+    margin:-2px 0 9px;
+  }
+
+  .library-batch-actions{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    flex:1 1 auto;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+
+  .library-batch-actions[hidden]{
+    display:none!important;
+  }
+
+  .library-batch-actions::-webkit-scrollbar{
+    display:none;
+  }
+
+  .library-batch-actions select{
+    width:auto;
+    min-width:132px;
+    max-width:210px;
+  }
+
+  .library-batch-summary{
+    flex:0 0 auto;
+    min-width:62px;
+    color:#536068;
+    font-size:11px;
+    font-weight:800;
+  }
+
+  .library-batch-arrow{
+    color:#7a858b;
+    font-weight:900;
+  }
+
+  .library-order-cell{
+    white-space:nowrap;
+  }
+
+  .library-batch-check{
+    display:none;
+    width:15px!important;
+    height:15px;
+    margin:0;
+    accent-color:#607887;
+    vertical-align:middle;
+    cursor:pointer;
+  }
+
+  .library-table-wrap.batch-selecting .library-batch-check{
+    display:inline-block;
+  }
+
+  .library-table-wrap.batch-selecting .library-drag-grip{
+    display:none!important;
+  }
+
+  .library-resource-row.batch-selected > td{
+    background:#eef3f5!important;
+    box-shadow:inset 0 1px 0 rgba(96,120,135,.08);
+  }
+
+  #libraryBatchModeBtn[aria-pressed="true"]{
+    color:#fff!important;
+    border-color:#536976!important;
+    background:#607887!important;
+    box-shadow:0 3px 9px rgba(55,70,77,.16)!important;
+  }
+
   /* 色库分组随列表滚动吸顶：始终停在列标题下方，下一组自然顶替。 */
   .library-table-wrap{
     --library-table-head-height:42px;
@@ -20093,12 +20173,22 @@
             <input id="librarySearch" type="text" placeholder="搜索名字 / ID / HEX"/>
             <button class="btn primary" id="addLibraryColorBtn">+ 新增纯色</button>
             <button class="btn soft" id="addTextureBtn" title="点击选择图片，或直接把图片拖到这里">+ 上传 / 拖入花灰纹理</button>
+            <button class="btn soft" id="libraryBatchModeBtn" type="button" aria-pressed="false">批量归类</button>
+          </div>
+          <div class="library-batch-bar library-batch-actions" id="libraryBatchActions" hidden>
+            <span class="library-batch-summary" id="libraryBatchSummary">已选 0 个</span>
+            <select id="libraryBatchSource" aria-label="选择要全选的来源分组"></select>
+            <button class="btn small" id="libraryBatchSelectGroupBtn" type="button">全选来源组</button>
+            <button class="btn small ghost" id="libraryBatchClearBtn" type="button">清空</button>
+            <span class="library-batch-arrow" aria-hidden="true">→</span>
+            <select id="libraryBatchTarget" aria-label="选择批量归类的目标分组"></select>
+            <button class="btn small primary" id="libraryBatchApplyBtn" type="button" disabled>批量加入</button>
           </div>
           <div class="library-table-wrap">
             <div class="library-sticky-group-overlay" id="libraryStickyGroup" hidden></div>
             <table class="library-table">
               <thead>
-                <tr><th style="width:34px">排序</th><th style="width:64px">预览</th><th>名字</th><th>ID</th><th>类型</th><th>HEX</th><th>明暗</th><th>缩放</th><th>操作</th></tr>
+                <tr><th style="width:48px"><span id="libraryOrderColumnLabel">排序</span></th><th style="width:64px">预览</th><th>名字</th><th>ID</th><th>类型</th><th>HEX</th><th>明暗</th><th>缩放</th><th>操作</th></tr>
               </thead>
               <tbody id="libraryTableBody"></tbody>
             </table>
@@ -23711,6 +23801,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   let colorLibrary = [];
   let favoriteOverviewMode = false;
   let draggedLibraryId = null;
+  let libraryBatchMode = false;
+  let selectedLibraryResourceIds = new Set();
   let draggedPaletteIndex = null;
   let stripeSelection = new Set();
   let activeRoleFocus = null;
@@ -31551,6 +31643,193 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return groups;
   }
 
+  function fillLibraryBatchGroupSelect(select,groups,kind){
+    if(!select)return;
+
+    const previous=select.value;
+    const fallback=kind==='source'
+      ? (groups.find(group=>group.key==='ungrouped' && group.items.length)?.key || groups[0]?.key || '')
+      : (groups.find(group=>group.key!=='ungrouped')?.key || 'ungrouped');
+
+    select.replaceChildren();
+
+    groups.forEach(group=>{
+      const option=document.createElement('option');
+      option.value=group.key;
+      option.textContent=kind==='source'
+        ? `${group.name}（${group.items.length}）`
+        : group.key==='ungrouped'
+          ? '未分组（从全部色板移除）'
+          : `加入：${group.name}`;
+      select.appendChild(option);
+    });
+
+    select.value=groups.some(group=>group.key===previous)
+      ? previous
+      : fallback;
+  }
+
+  function syncLibraryBatchRowSelection(){
+    $$('#libraryTableBody > .library-resource-row').forEach(row=>{
+      const selected=selectedLibraryResourceIds.has(row.dataset.id);
+      row.classList.toggle('batch-selected',selected);
+      const checkbox=row.querySelector('.library-batch-check');
+      if(checkbox)checkbox.checked=selected;
+    });
+  }
+
+  function syncLibraryBatchControls(groups=buildLibraryGroups()){
+    const validIds=new Set(colorLibrary.map(item=>item.id));
+    selectedLibraryResourceIds.forEach(id=>{
+      if(!validIds.has(id))selectedLibraryResourceIds.delete(id);
+    });
+
+    const wrap=$('.library-table-wrap');
+    const modeBtn=$('#libraryBatchModeBtn');
+    const actions=$('#libraryBatchActions');
+    const summary=$('#libraryBatchSummary');
+    const source=$('#libraryBatchSource');
+    const target=$('#libraryBatchTarget');
+    const selectGroupBtn=$('#libraryBatchSelectGroupBtn');
+    const applyBtn=$('#libraryBatchApplyBtn');
+    const columnLabel=$('#libraryOrderColumnLabel');
+
+    wrap?.classList.toggle('batch-selecting',libraryBatchMode);
+    if(modeBtn){
+      modeBtn.setAttribute('aria-pressed',String(libraryBatchMode));
+      modeBtn.textContent=libraryBatchMode?'退出批量':'批量归类';
+    }
+    if(actions)actions.hidden=!libraryBatchMode;
+    if(columnLabel)columnLabel.textContent=libraryBatchMode?'选择':'排序';
+
+    fillLibraryBatchGroupSelect(source,groups,'source');
+    fillLibraryBatchGroupSelect(target,groups,'target');
+
+    const count=selectedLibraryResourceIds.size;
+    if(summary)summary.textContent=`已选 ${count} 个`;
+
+    const sourceGroup=groups.find(group=>group.key===source?.value);
+    const sourceIds=(sourceGroup?.items||[]).map(item=>item.id);
+    const allSourceSelected=
+      sourceIds.length>0 &&
+      sourceIds.every(id=>selectedLibraryResourceIds.has(id));
+
+    if(selectGroupBtn){
+      selectGroupBtn.disabled=!sourceIds.length;
+      selectGroupBtn.textContent=allSourceSelected?'取消本组':'全选来源组';
+    }
+
+    if(applyBtn){
+      applyBtn.disabled=!count || !target?.value;
+      applyBtn.textContent=target?.value==='ungrouped'
+        ? '移至未分组'
+        : '批量加入';
+    }
+
+    syncLibraryBatchRowSelection();
+  }
+
+  function toggleLibraryBatchMode(){
+    libraryBatchMode=!libraryBatchMode;
+    if(!libraryBatchMode)selectedLibraryResourceIds.clear();
+    syncLibraryBatchControls();
+  }
+
+  function toggleLibraryBatchSourceGroup(){
+    const groups=buildLibraryGroups();
+    const sourceKey=$('#libraryBatchSource')?.value;
+    const group=groups.find(item=>item.key===sourceKey);
+    const ids=(group?.items||[]).map(item=>item.id);
+    if(!ids.length)return;
+
+    const allSelected=ids.every(id=>selectedLibraryResourceIds.has(id));
+    ids.forEach(id=>{
+      if(allSelected)selectedLibraryResourceIds.delete(id);
+      else selectedLibraryResourceIds.add(id);
+    });
+    syncLibraryBatchControls(groups);
+  }
+
+  async function applyLibraryBatchGrouping(){
+    const ids=[...selectedLibraryResourceIds].filter(id=>findFillById(id));
+    const targetKey=$('#libraryBatchTarget')?.value||'';
+    if(!ids.length){
+      toast('请先勾选要归类的颜色');
+      return false;
+    }
+
+    const nextList=deepClone(savedPalettes());
+    const targetIndex=paletteGroupIndex(targetKey);
+    const affectedIndices=new Set();
+    const beforeJson=JSON.stringify(nextList.map(p=>p.colors||[]));
+
+    if(targetKey==='ungrouped'){
+      nextList.forEach((palette,index)=>{
+        let colors=Array.isArray(palette.colors)?palette.colors:[];
+        ids.forEach(id=>{
+          const resource=findFillById(id);
+          if(resource)colors=paletteWithoutResource(colors,resource);
+        });
+
+        if(JSON.stringify(colors)!==JSON.stringify(palette.colors||[])){
+          palette.colors=colors;
+          palette.savedAt=Date.now();
+          affectedIndices.add(index);
+        }
+      });
+    }else if(targetIndex>=0 && nextList[targetIndex]){
+      ids.forEach(id=>{
+        const resource=findFillById(id);
+        if(resource){
+          insertResourceIntoSavedPalette(
+            nextList[targetIndex],
+            resource,
+            nextList[targetIndex].colors?.length||0
+          );
+        }
+      });
+      affectedIndices.add(targetIndex);
+    }else{
+      toast('目标色板已经不存在，请重新选择');
+      syncLibraryBatchControls();
+      return false;
+    }
+
+    const changed=beforeJson!==JSON.stringify(nextList.map(p=>p.colors||[]));
+    if(!changed){
+      toast(targetKey==='ungrouped'?'这些颜色已经在未分组':'这些颜色已经全部在目标色板中');
+      return false;
+    }
+
+    pushHistory();
+    writeSavedPalettes(nextList,{reason:'library-batch-grouping'});
+
+    syncCurrentPaletteFromSavedMutation(
+      nextList,
+      affectedIndices,
+      $('#savedPalettes')?.value ?? ''
+    );
+
+    const targetName=targetKey==='ungrouped'
+      ? '未分组'
+      : (nextList[targetIndex]?.name||'目标色板');
+
+    selectedLibraryResourceIds.clear();
+    renderSavedPalettes();
+    renderPalette();
+    renderRoles();
+    renderLibraryTable();
+    renderPaletteLibrarySearch();
+    syncInterfaceMotionBaseline();
+
+    toast(
+      targetKey==='ungrouped'
+        ? `已将 ${ids.length} 个颜色移至“未分组”`
+        : `已将 ${ids.length} 个颜色批量加入“${targetName}”`
+    );
+    return true;
+  }
+
   function libraryGroupForResourceId(id){
     return buildLibraryGroups()
       .filter(g=>g.key!=='ungrouped')
@@ -32002,7 +32281,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
       items.forEach(c=>{
         const tr=document.createElement('tr');
-        tr.className='library-resource-row'+(collapsed?' group-hidden':'');
+        tr.className=
+          'library-resource-row'+
+          (collapsed?' group-hidden':'')+
+          (selectedLibraryResourceIds.has(c.id)?' batch-selected':'');
         tr.draggable=false;
         tr.dataset.id=c.id;
         tr.dataset.groupKey=group.key;
@@ -32012,7 +32294,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const aliasLabel=sameHexAliasLabel(c);
 
         tr.innerHTML=`
-          <td>
+          <td class="library-order-cell">
+            <input class="library-batch-check"
+                   data-id="${c.id}"
+                   type="checkbox"
+                   aria-label="选择该颜色"
+                   ${selectedLibraryResourceIds.has(c.id)?'checked':''}/>
             <span class="library-drag-grip"
                   data-id="${c.id}"
                   data-group-key="${group.key}"
@@ -32044,12 +32331,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
     });
 
+    syncLibraryBatchControls(groups);
     syncLibraryStickyGroup();
     scheduleLibraryStickyGroupSync();
 
     box.querySelectorAll('.library-group-head').forEach(btn=>{
       btn.onclick=e=>{
         void toggleLibraryGroup(e.currentTarget.dataset.groupKey);
+      };
+    });
+
+    box.querySelectorAll('.library-batch-check').forEach(checkbox=>{
+      checkbox.onchange=e=>{
+        const id=e.currentTarget.dataset.id;
+        if(!id)return;
+
+        if(e.currentTarget.checked)selectedLibraryResourceIds.add(id);
+        else selectedLibraryResourceIds.delete(id);
+        syncLibraryBatchControls(groups);
       };
     });
 
@@ -38991,6 +39290,17 @@ ${sheets.join('\n')}
   $('#backToDesignBtn').onclick=showDesignPage;
   $('#librarySearch').oninput=renderLibraryTable;
   $('#addLibraryColorBtn').onclick=()=>addLibraryColor();
+  $('#libraryBatchModeBtn').onclick=toggleLibraryBatchMode;
+  $('#libraryBatchSource').onchange=()=>syncLibraryBatchControls();
+  $('#libraryBatchTarget').onchange=()=>syncLibraryBatchControls();
+  $('#libraryBatchSelectGroupBtn').onclick=toggleLibraryBatchSourceGroup;
+  $('#libraryBatchClearBtn').onclick=()=>{
+    selectedLibraryResourceIds.clear();
+    syncLibraryBatchControls();
+  };
+  $('#libraryBatchApplyBtn').onclick=()=>{
+    void applyLibraryBatchGrouping();
+  };
   const textureUploadButton=$('#addTextureBtn');
   const textureUploadInput=$('#textureFileInput');
   textureUploadButton.onclick=()=>{

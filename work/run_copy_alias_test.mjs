@@ -221,6 +221,58 @@ window.addEventListener('load', async () => {
     saveColorLibrary();
     renderAll();
 
+    const libraryBeforeBatchGrouping = deepClone(colorLibrary);
+    const palettesBeforeBatchGrouping = deepClone(savedPalettes());
+    const paletteBeforeBatchGrouping = deepClone(state.palette);
+    const activeBeforeBatchGrouping = state.activeSavedPaletteId;
+    const nameBeforeBatchGrouping = state.paletteName;
+
+    colorLibrary = [
+      { id: 'C810', type: 'solid', name: '批量甲', hex: '#123456' },
+      { id: 'C811', type: 'solid', name: '批量乙', hex: '#234567' },
+      { id: 'C812', type: 'solid', name: '批量丙', hex: '#345678' }
+    ];
+    writeSavedPalettes([
+      { id: 'pal-batch-target', name: '批量目标', colors: [], savedAt: 1 },
+      { id: 'pal-batch-source', name: '批量来源', colors: ['C812'], savedAt: 2 }
+    ], { touchAssets: false, reason: 'batch-grouping-test' });
+    state.activeSavedPaletteId = 'pal-batch-target';
+    state.paletteName = '批量目标';
+    state.palette = [];
+    libraryBatchMode = false;
+    selectedLibraryResourceIds.clear();
+    renderLibraryTable();
+    toggleLibraryBatchMode();
+    document.querySelector('#libraryBatchSource').value = 'ungrouped';
+    syncLibraryBatchControls();
+    toggleLibraryBatchSourceGroup();
+    check('batch mode selects every color in the source group', selectedLibraryResourceIds.size === 2, String(selectedLibraryResourceIds.size));
+    check('batch mode swaps drag grips for selection boxes', document.querySelector('.library-table-wrap')?.classList.contains('batch-selecting') && getComputedStyle(document.querySelector('.library-batch-check')).display !== 'none');
+
+    document.querySelector('#libraryBatchTarget').value = 'palette_0';
+    await applyLibraryBatchGrouping();
+    let batchPalettes = savedPalettes();
+    check('batch grouping adds all selected colors to one palette', batchPalettes[0]?.colors?.join('|') === 'C810|C811', batchPalettes[0]?.colors?.join('|'));
+    check('batch grouped colors leave ungrouped automatically', buildLibraryGroups().find(group => group.key === 'ungrouped')?.items?.length === 0);
+
+    selectedLibraryResourceIds = new Set(['C810', 'C812']);
+    document.querySelector('#libraryBatchTarget').value = 'ungrouped';
+    syncLibraryBatchControls();
+    await applyLibraryBatchGrouping();
+    batchPalettes = savedPalettes();
+    check('moving a batch to ungrouped removes every palette reference', batchPalettes[0]?.colors?.join('|') === 'C811' && !batchPalettes[1]?.colors?.length, JSON.stringify(batchPalettes.map(item => item.colors)));
+
+    colorLibrary = libraryBeforeBatchGrouping;
+    writeSavedPalettes(palettesBeforeBatchGrouping, { touchAssets: false, reason: 'batch-grouping-test-restore' });
+    state.palette = paletteBeforeBatchGrouping;
+    state.activeSavedPaletteId = activeBeforeBatchGrouping;
+    state.paletteName = nameBeforeBatchGrouping;
+    libraryBatchMode = false;
+    selectedLibraryResourceIds.clear();
+    saveColorLibrary();
+    renderAll();
+    renderLibraryTable();
+
     setCopyImageMode('standard', { persist: false });
     const modeSwitchBefore = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();
     void document.querySelector('#copyImageModeSwitch')?.offsetWidth;
