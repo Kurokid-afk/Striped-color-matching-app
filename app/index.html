@@ -82,7 +82,7 @@
       border-color:#f1c5c0;
     }
   .btn.small{padding:4px 7px;font-size:12px}
-  .main{display:grid;grid-template-columns:minmax(250px,22vw) minmax(420px,1fr) minmax(290px,24vw);min-height:0;min-width:0}
+  .main{display:grid;grid-template-columns:minmax(205px,22vw) minmax(360px,1fr) minmax(255px,24vw);min-height:0;min-width:0}
   .sidebar,.rightbar{
       background:var(--surface);
       overflow:auto;
@@ -5334,10 +5334,12 @@
 
   .sort-source-slot > *{
     opacity:0!important;
+    transition:opacity .16s ease!important;
   }
 
   tr.sort-source-slot > td{
     opacity:0!important;
+    transition:opacity .16s ease!important;
   }
 
   .sort-source-slot::after{
@@ -6118,7 +6120,6 @@
     color:#5a67cf!important;
     font-weight:700;
   }
-
 
   /* ========================================================
      Motion Engine v3
@@ -9410,7 +9411,8 @@
     z-index:4;
     background:var(--surface);
     box-shadow:
-      0 12px 22px -24px rgba(17,24,39,.42);
+      0 1px 0 var(--line),
+      0 12px 24px -16px rgba(17,24,39,.28);
   }
 
   .rightbar-fixed-stack .compact-project-properties{
@@ -15624,10 +15626,10 @@
     pointer-events:none!important;
   }
 
-  body.pointer-sorting .stripe-item:not(.sort-source-slot),
-  body.pointer-sorting .swatch:not(.sort-source-slot),
-  body.pointer-sorting .library-resource-row:not(.sort-source-slot),
-  body.pointer-sorting .favorite-tile:not(.sort-source-slot){
+  body.pointer-sorting .stripe-item:not(.sort-source-slot):not(.sort-proxy-piece),
+  body.pointer-sorting .swatch:not(.sort-source-slot):not(.sort-proxy-piece),
+  body.pointer-sorting .library-resource-row:not(.sort-source-slot):not(.sort-proxy-piece),
+  body.pointer-sorting .favorite-tile:not(.sort-source-slot):not(.sort-proxy-piece){
     position:relative!important;
     z-index:2!important;
   }
@@ -16414,7 +16416,7 @@
     }
 
     .rightbar-fixed-stack .role-control-section{
-      flex:1 1 auto!important;
+      flex:0 1 auto!important;
       min-height:0!important;
 
       display:grid!important;
@@ -16451,7 +16453,8 @@
         minmax(0,1fr)
         auto!important;
 
-      overflow:hidden!important;
+      overflow-y:auto!important;
+      overflow-x:hidden!important;
     }
 
     #roles{
@@ -16731,33 +16734,23 @@
     }
 
     #roles{
-      display:grid!important;
-      grid-template-rows:
-        minmax(0,1fr)
-        minmax(0,1fr)!important;
+      display:flex!important;
+      flex-direction:column!important;
 
       gap:8px!important;
 
       min-height:0!important;
-      max-height:
-        calc(
-          (var(--role-group-max-height) * 2) +
-          8px
-        )!important;
+      max-height:none!important;
 
       overflow:hidden!important;
       padding:0!important;
       margin:0!important;
     }
 
-    /* 只有一个组存在时，它占满两个轨道，但仍遵守最大阈值。 */
-    #roles > .role-group:only-child{
-      grid-row:1 / -1!important;
-      align-self:start!important;
-      width:100%!important;
-    }
-
     #roles > .role-group{
+      flex:0 0 auto!important;
+      width:100%!important;
+
       min-height:0!important;
       max-height:
         var(--role-group-max-height)!important;
@@ -16953,10 +16946,8 @@
 
   /* 外层只负责上下排两个组，不参与任何滚动。 */
   #roles{
-    display:grid!important;
-    grid-template-rows:
-      minmax(0,1fr)
-      minmax(0,1fr)!important;
+    display:flex!important;
+    flex-direction:column!important;
     gap:8px!important;
 
     min-height:0!important;
@@ -16964,6 +16955,9 @@
   }
 
   #roles > .role-group{
+    flex:0 0 auto!important;
+    width:100%!important;
+
     min-height:0!important;
     max-height:
       calc(
@@ -17162,7 +17156,7 @@
 
   #roles .role-group-list{
     min-width:0!important;
-    max-height:clamp(150px,22vh,235px)!important;
+    max-height:210px!important;
 
     overflow-y:auto!important;
     overflow-x:hidden!important;
@@ -19560,7 +19554,7 @@
     #schemes{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   }
 
-  /* 色库批量归类：默认保持紧凑，进入批量模式后才显示复选框和操作区。 */
+  /* 色库自由多选排序：勾选项可以不连续，并作为一个稳定顺序块移动。 */
   .library-batch-bar{
     display:flex;
     align-items:center;
@@ -19587,12 +19581,6 @@
     display:none;
   }
 
-  .library-batch-actions select{
-    width:auto;
-    min-width:132px;
-    max-width:210px;
-  }
-
   .library-batch-summary{
     flex:0 0 auto;
     min-width:62px;
@@ -19601,9 +19589,10 @@
     font-weight:800;
   }
 
-  .library-batch-arrow{
+  .library-multi-sort-hint{
     color:#7a858b;
-    font-weight:900;
+    font-size:11px;
+    white-space:nowrap;
   }
 
   .library-order-cell{
@@ -19611,7 +19600,7 @@
   }
 
   .library-batch-check{
-    display:none;
+    display:inline-block;
     width:15px!important;
     height:15px;
     margin:0;
@@ -19620,24 +19609,13 @@
     cursor:pointer;
   }
 
-  .library-table-wrap.batch-selecting .library-batch-check{
-    display:inline-block;
-  }
-
-  .library-table-wrap.batch-selecting .library-drag-grip{
-    display:none!important;
+  .library-order-cell .library-drag-grip{
+    margin-left:5px;
   }
 
   .library-resource-row.batch-selected > td{
     background:#eef3f5!important;
     box-shadow:inset 0 1px 0 rgba(96,120,135,.08);
-  }
-
-  #libraryBatchModeBtn[aria-pressed="true"]{
-    color:#fff!important;
-    border-color:#536976!important;
-    background:#607887!important;
-    box-shadow:0 3px 9px rgba(55,70,77,.16)!important;
   }
 
   /* 色库分组随列表滚动吸顶：始终停在列标题下方，下一组自然顶替。 */
@@ -20173,22 +20151,17 @@
             <input id="librarySearch" type="text" placeholder="搜索名字 / ID / HEX"/>
             <button class="btn primary" id="addLibraryColorBtn">+ 新增纯色</button>
             <button class="btn soft" id="addTextureBtn" title="点击选择图片，或直接把图片拖到这里">+ 上传 / 拖入花灰纹理</button>
-            <button class="btn soft" id="libraryBatchModeBtn" type="button" aria-pressed="false">批量归类</button>
           </div>
           <div class="library-batch-bar library-batch-actions" id="libraryBatchActions" hidden>
             <span class="library-batch-summary" id="libraryBatchSummary">已选 0 个</span>
-            <select id="libraryBatchSource" aria-label="选择要全选的来源分组"></select>
-            <button class="btn small" id="libraryBatchSelectGroupBtn" type="button">全选来源组</button>
             <button class="btn small ghost" id="libraryBatchClearBtn" type="button">清空</button>
-            <span class="library-batch-arrow" aria-hidden="true">→</span>
-            <select id="libraryBatchTarget" aria-label="选择批量归类的目标分组"></select>
-            <button class="btn small primary" id="libraryBatchApplyBtn" type="button" disabled>批量加入</button>
+            <span class="library-multi-sort-hint">抓住任一已选颜色的 ⋮⋮，即可一起移动；选择不必连续</span>
           </div>
           <div class="library-table-wrap">
             <div class="library-sticky-group-overlay" id="libraryStickyGroup" hidden></div>
             <table class="library-table">
               <thead>
-                <tr><th style="width:48px"><span id="libraryOrderColumnLabel">排序</span></th><th style="width:64px">预览</th><th>名字</th><th>ID</th><th>类型</th><th>HEX</th><th>明暗</th><th>缩放</th><th>操作</th></tr>
+                <tr><th style="width:64px">选择 / 排序</th><th style="width:64px">预览</th><th>名字</th><th>ID</th><th>类型</th><th>HEX</th><th>明暗</th><th>缩放</th><th>操作</th></tr>
               </thead>
               <tbody id="libraryTableBody"></tbody>
             </table>
@@ -20198,13 +20171,14 @@
           <h3 style="margin-top:0">色库使用逻辑</h3>
           <div class="muted library-side-note">
             <p>• <b>固定资产</b>：色库和已保存色板与软件共存，不属于任何一个条纹项目。导入、导出项目都不会携带或覆盖它们。</p>
-            <p>• <b>色板</b>：长期保存的一组颜色；颜色默认写入色库，保存色板后自动归入同名分类。</p>
+            <p>• <b>色板</b>：长期保存的一组颜色；新增和图片取色会立即写入色库，并自动归入当前色板分类。</p>
             <p>• <b>色库</b>：长期保存颜色名字、HEX 色号和纹理的总库。</p>
             <p>• <b>同色异名</b>：同一个 HEX 可以建立多个名字，每张色卡都有独立 ID。手动选择时按 ID 区分；自动配色仍默认避免出现两个视觉相同的颜色。</p>
             <p>• 在“当前色板”的搜索框里，可以按名字或 HEX 从色库查找并加入。</p>
             <p>• 条纹右侧“颜色角色”里的名字只显示，不允许在那里修改；要改名字请回到色库。</p>
             <p>• ID 不是颜色天生自带的：只有加入色库后才分配 ID。纯色仍保留 HEX；纹理依靠 ID 定位。</p>
-            <p>• 色库分组直接读取“已保存色板”：每个已保存色板就是一个分类；同一个资源、同一个名字都允许同时出现在多个色板/分类里。跨分类拖动会加入目标分类，不会从原分类移除；只有拖到“未分组”才会清除所有色板引用。</p>
+            <p>• 色库分组直接读取“已保存色板”：每个已保存色板就是一个分类。跨分类拖动是移动，不是复制；“未分组”只保留确实未被任何已保存色板引用的资源。</p>
+            <p>• 调整当前色板颜色时优先保留原 ID 并更新名称 / HEX；若原色仍被其他色板使用，则为当前色板建立独立色卡，不会破坏其他分组。</p>
             <p>• 色板里来自色库的资源，点击会复制 ID；临时 HEX 颜色仍直接复制 HEX。颜色角色输入框可直接粘贴 ID 或 HEX。</p>
             <p>• “导出固定资产”会单独备份色库、色板和纹理。导入同版或旧版只补充缺少内容，不覆盖本机名称与顺序；只有修订号更高的固定资产文件才会替换本机版本。</p>
           </div>
@@ -23801,8 +23775,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   let colorLibrary = [];
   let favoriteOverviewMode = false;
   let draggedLibraryId = null;
-  let libraryBatchMode = false;
   let selectedLibraryResourceIds = new Set();
+  let selectedLibraryGroupKey = '';
   let draggedPaletteIndex = null;
   let stripeSelection = new Set();
   let activeRoleFocus = null;
@@ -24293,7 +24267,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function purgePointerSortArtifacts(){
     stopPointerSortAutoScroll(pointerSortSession);
 
-    $$('.sort-pointer-proxy').forEach(el=>el.remove());
+    clearLiveSortPreview();
+
+    $$('.sort-pointer-proxy,.sort-layout-placeholder,.sort-layout-placeholder-row,.sort-drag-ghost').forEach(el=>el.remove());
 
     $$('.sort-source-slot,.sort-source-detached,.sort-reflow-moving').forEach(el=>{
       el.classList.remove(
@@ -24577,6 +24553,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     document.body.classList.add('pointer-sorting');
     movePointerProxy(e.clientX,e.clientY);
+
+    // 浮层淡入，避免抓取瞬间突然闪现。
+    if(
+      !uiReducedMotion() &&
+      typeof proxy.el.animate==='function'
+    ){
+      proxy.el.animate(
+        [
+          {opacity:0},
+          {opacity:1}
+        ],
+        {
+          duration:140,
+          easing:'ease-out'
+        }
+      );
+    }
+
     startPointerSortAutoScroll();
 
     const onMove=ev=>{
@@ -25043,18 +25037,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function updateLibraryPendingDrop(clientY,targetGroupKey){
-    if(!draggedLibraryId || !pointerSortSession || !targetGroupKey)return;
+    if(!draggedLibraryId || !pointerSortSession || !pendingLibraryDrop)return;
+    if(!targetGroupKey)return;
 
-    const sourceRow=pointerSortSession.sourceEls?.[0]||null;
-    const rows=libraryRowsForGroup(targetGroupKey,sourceRow);
+    // 统一处理：指针落在哪个分组，就按哪个分组的行计算落点。
+    const sourceSet=new Set(pointerSortSession.sourceEls);
+    let rows=libraryRowsForGroup(targetGroupKey);
+
+    if(targetGroupKey===pendingLibraryDrop.sourceGroupKey){
+      rows=rows.filter(row=>!sourceSet.has(row));
+    }
+
     const insertAt=rows.length?liveVerticalInsertAt(clientY,rows):0;
 
-    pendingLibraryDrop={
-      sourceGroupKey:draggedLibraryGroupKey,
-      targetGroupKey,
-      insertAt,
-      groupIds:rows.map(r=>r.dataset.id).filter(Boolean)
-    };
+    pendingLibraryDrop.targetGroupKey=targetGroupKey;
+    pendingLibraryDrop.insertAt=insertAt;
+    pendingLibraryDrop.groupIds=rows.map(r=>r.dataset.id).filter(Boolean);
 
     markLibraryDropTarget(targetGroupKey);
     movePlaceholderTo(insertAt);
@@ -25067,10 +25065,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return false;
     }
 
-    const movingId=draggedLibraryId;
-    const resource=findFillById(movingId);
-
-    if(!resource){
+    const movingSet=new Set(
+      pendingLibraryDrop.movingIds?.length
+        ? pendingLibraryDrop.movingIds
+        : [draggedLibraryId]
+    );
+    const movingIds=[...movingSet].filter(id=>!!findFillById(id));
+    if(!movingIds.length){
       clearLibraryDropTarget();
       await cancelPointerSort();
       return false;
@@ -25079,63 +25080,158 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const sourceGroupKey=pendingLibraryDrop.sourceGroupKey||draggedLibraryGroupKey;
     const targetGroupKey=pendingLibraryDrop.targetGroupKey||sourceGroupKey;
     const insertAt=Math.max(0,Number(pendingLibraryDrop.insertAt)||0);
+    const sameGroup=sourceGroupKey===targetGroupKey;
 
-    await settlePointerProxyToPlaceholder(
-      sourceGroupKey===targetGroupKey ? 215 : 235
-    );
+    await settlePointerProxyToPlaceholder(sameGroup ? 215 : 235);
 
     const list=savedPalettes();
     const selectedSavedValue=$('#savedPalettes')?.value ?? '';
     const affectedIndices=new Set();
-
-    const sourceIndex=paletteGroupIndex(sourceGroupKey);
-    const targetIndex=paletteGroupIndex(targetGroupKey);
-
     const beforePaletteJson=JSON.stringify(list.map(p=>p.colors||[]));
     const beforeLibraryOrder=colorLibrary.map(x=>x.id).join('|');
 
-    if(targetGroupKey==='ungrouped'){
-      // “未分组”的定义就是不被任何已保存色板引用。
-      // 因此拖进去时必须从所有已保存色板中移除。
-      list.forEach((p,index)=>{
-        const next=paletteWithoutResource(p.colors,resource);
-        if(JSON.stringify(next)!==JSON.stringify(p.colors||[])){
-          p.colors=next;
-          p.savedAt=Date.now();
-          affectedIndices.add(index);
+    if(sameGroup){
+      // 同组内排序：单个或多个都作为一个稳定块插入落点。
+      const group=buildLibraryGroups().find(item=>item.key===sourceGroupKey);
+      const groupIds=(group?.items||[]).map(item=>item.id);
+      const moving=groupIds.filter(id=>movingSet.has(id));
+      const remaining=groupIds.filter(id=>!movingSet.has(id));
+      const at=Math.max(0,Math.min(insertAt,remaining.length));
+      const nextIds=[...remaining];
+      nextIds.splice(at,0,...moving);
+      const changed=nextIds.join('|')!==groupIds.join('|');
+
+      if(changed){
+        pushHistory();
+
+        if(sourceGroupKey==='ungrouped'){
+          reorderLibraryResourceSubset(groupIds,nextIds);
+          saveColorLibrary();
+        }else{
+          const sourceIndex=paletteGroupIndex(sourceGroupKey);
+
+          if(sourceIndex>=0 && list[sourceIndex]){
+            reorderSavedPaletteResourceSubset(
+              list[sourceIndex],
+              groupIds,
+              nextIds
+            );
+            list[sourceIndex].savedAt=Date.now();
+            writeSavedPalettes(list,{reason:'library-sort'});
+            syncCurrentPaletteFromSavedMutation(
+              list,
+              new Set([sourceIndex]),
+              selectedSavedValue
+            );
+          }
         }
+
+        // 色库分组排序只更新真正受影响的小区域，避免整片重绘动画。
+        renderSavedPalettes();
+        renderPalette();
+        renderRoles();
+      }
+
+      draggedLibraryId=null;
+      draggedLibraryGroupKey=null;
+      pendingLibraryDrop=null;
+      clearLibraryDropTarget();
+
+      cleanupPointerSort();
+      renderLibraryTable();
+      renderPaletteLibrarySearch();
+      syncInterfaceMotionBaseline();
+
+      if(changed){
+        toast(`已将 ${moving.length} 个颜色移动到第 ${at+1} 位`);
+      }
+
+      return changed;
+    }
+
+    // 跨分组移动：移动不是复制——从原分组移除，再插入目标分组。
+    const removeFromPalette=palette=>{
+      const before=JSON.stringify(palette.colors||[]);
+      let colors=Array.isArray(palette.colors)?palette.colors:[];
+
+      movingIds.forEach(id=>{
+        const resource=findFillById(id);
+        if(resource)colors=paletteWithoutResource(colors,resource);
       });
 
+      if(JSON.stringify(colors)!==before){
+        palette.colors=colors;
+        palette.savedAt=Date.now();
+        return true;
+      }
+
+      return false;
+    };
+
+    // 1) 从源分组移除（源是已保存色板时；未分组不需要显式移除）。
+    const sourceIndex=paletteGroupIndex(sourceGroupKey);
+
+    if(
+      sourceIndex>=0 &&
+      list[sourceIndex] &&
+      removeFromPalette(list[sourceIndex])
+    ){
+      affectedIndices.add(sourceIndex);
+    }
+
+    // 2) 插入目标分组。
+    if(targetGroupKey==='ungrouped'){
+      // 移到“未分组”= 从所有已保存色板移除，资源自动归入未分组。
+      list.forEach((palette,index)=>{
+        if(removeFromPalette(palette))affectedIndices.add(index);
+      });
+
+      // 按落点调整未分组内部顺序。
       const targetIds=(pendingLibraryDrop.groupIds||[])
-        .filter(id=>id!==movingId);
+        .filter(id=>!movingSet.has(id));
 
-      reorderUngroupedResource(movingId,targetIds,insertAt);
+      movingIds.forEach((id,offset)=>{
+        reorderUngroupedResource(id,targetIds,insertAt+offset);
+        const at=Math.max(0,Math.min(insertAt+offset,targetIds.length));
+        targetIds.splice(at,0,id);
+      });
     }else{
-      // 色库分类是多对多：
-      // 跨分组拖动 = 同时加入目标色板，不再从原色板移除。
-      // 因而同一个颜色 / 同一个名字可以同时存在于多个色板分类中。
-      if(targetIndex>=0 && list[targetIndex]){
-        insertResourceIntoSavedPalette(
-          list[targetIndex],
-          resource,
-          insertAt
-        );
+      const targetIndex=paletteGroupIndex(targetGroupKey);
 
-        affectedIndices.add(targetIndex);
+      if(targetIndex>=0 && list[targetIndex]){
+        const palette=list[targetIndex];
+        const before=JSON.stringify(palette.colors||[]);
+
+        movingIds.forEach((id,offset)=>{
+          const resource=findFillById(id);
+          if(resource){
+            insertResourceIntoSavedPalette(
+              palette,
+              resource,
+              insertAt+offset
+            );
+          }
+        });
+
+        if(JSON.stringify(palette.colors||[])!==before){
+          affectedIndices.add(targetIndex);
+        }
       }
     }
 
-    const paletteChanged=beforePaletteJson!==JSON.stringify(list.map(p=>p.colors||[]));
-    const libraryOrderChanged=beforeLibraryOrder!==colorLibrary.map(x=>x.id).join('|');
-    const changed=paletteChanged || libraryOrderChanged || sourceGroupKey!==targetGroupKey;
+    const paletteChanged=
+      beforePaletteJson!==JSON.stringify(list.map(p=>p.colors||[]));
+    const libraryOrderChanged=
+      beforeLibraryOrder!==colorLibrary.map(x=>x.id).join('|');
+    const changed=paletteChanged || libraryOrderChanged || !sameGroup;
 
     if(changed){
       pushHistory();
 
-      if(paletteChanged)writeSavedPalettes(list);
+      if(paletteChanged)writeSavedPalettes(list,{reason:'library-move'});
       if(libraryOrderChanged)saveColorLibrary();
 
-      const currentPaletteChanged=syncCurrentPaletteFromSavedMutation(
+      syncCurrentPaletteFromSavedMutation(
         list,
         affectedIndices,
         selectedSavedValue
@@ -25150,8 +25246,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         $('#savedPalettes').value=selectedSavedValue;
       }
 
-      // 色库分组排序只更新真正受影响的小区域，避免 renderAll
-      // 让整个软件产生重新加载的错觉。
       renderPalette();
       renderRoles();
     }
@@ -25169,13 +25263,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(changed){
       const targetName=targetGroupKey==='ungrouped'
         ? '未分组'
-        : (savedPalettes()[targetIndex]?.name||'目标色板');
+        : (savedPalettes()[paletteGroupIndex(targetGroupKey)]?.name||'目标色板');
 
-      toast(
-        sourceGroupKey===targetGroupKey
-          ? `已调整“${targetName}”中的顺序，色板已同步`
-          : `已同时加入“${targetName}”，原分类保留`
-      );
+      toast(`已将 ${movingIds.length} 个颜色移动到“${targetName}”`);
     }
 
     return changed;
@@ -30572,7 +30662,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
 
   window.addEventListener('resize',closeStripeRolePopover);
-  window.addEventListener('scroll',closeStripeRolePopover,true);
+  window.addEventListener('scroll',e=>{
+    // 弹窗内部滚动是选择颜色时的正常操作，不能关闭弹窗；
+    // 只有弹窗外部的滚动（条纹列表、页面等）才需要关闭。
+    if(
+      stripeRolePopover &&
+      e.target instanceof Node &&
+      stripeRolePopover.contains(e.target)
+    )return;
+    closeStripeRolePopover();
+  },true);
 
 
   function lockIconMarkup(){
@@ -31372,7 +31471,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     savedPalettes().forEach((p,index)=>{
       if((p.colors||[]).some(ref=>String(ref||'').toUpperCase()===key)){
-        matches.push({index,name:p.name||`色板 ${index+1}`});
+        matches.push({
+          index,
+          id:String(p?.id||''),
+          name:p.name||`色板 ${index+1}`
+        });
       }
     });
 
@@ -31390,9 +31493,66 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
   }
 
-  function removeReplacedLibraryResourceIfUnused(resourceId){
+  function migrateCurrentRolesToLibraryResource(fromResourceId,toResource){
+    if(!fromResourceId || !toResource)return 0;
+
+    const fromKey=String(fromResourceId).toUpperCase();
+    let changed=0;
+
+    roleNames().forEach(role=>{
+      const current=state.roles?.[role];
+      if(
+        !current ||
+        String(roleFillRef(current)||'').toUpperCase()!==fromKey
+      )return;
+
+      current.fillId=toResource.id;
+      if(toResource.type==='solid')current.color=toResource.hex;
+      current.name=toResource.name||current.name;
+      changed+=1;
+    });
+
+    return changed;
+  }
+
+  function detachHistoricMappingsFromSolidResource(resource){
+    if(!resource || resource.type==='texture' || !resource.hex)return 0;
+
+    const key=String(resource.id||'').toUpperCase();
+    let changed=0;
+    const detach=mapping=>{
+      if(!mapping)return;
+
+      Object.keys(mapping).forEach(role=>{
+        const value=mapping[role];
+        const ref=value && typeof value==='object'
+          ? value.fillId||value.id||''
+          : '';
+        if(String(ref).toUpperCase()!==key)return;
+
+        mapping[role]={
+          color:resource.hex,
+          name:resource.name||resource.hex
+        };
+        changed+=1;
+      });
+    };
+
+    (state.favorites||[]).forEach(item=>detach(item?.mapping));
+    (state.schemes||[]).forEach(item=>detach(item?.mapping));
+    return changed;
+  }
+
+  function removeReplacedLibraryResourceIfUnused(
+    resourceId,
+    {detachHistoricSolidRefs=false}={}
+  ){
     const resource=findFillById(resourceId);
     if(!resource)return false;
+
+    if(detachHistoricSolidRefs){
+      detachHistoricMappingsFromSolidResource(resource);
+    }
 
     const key=String(resource.id||'').toUpperCase();
     const usedByCurrentPalette=(state.palette||[]).some(ref=>
@@ -31575,6 +31735,68 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return changed;
   }
 
+  function libraryGroupEndAnchor(groupKey){
+    const header=$$('.library-group-row')
+      .find(row=>row.dataset.groupKey===groupKey);
+    if(!header)return null;
+
+    let node=header.nextSibling;
+    while(node && !node.classList?.contains('library-group-row')){
+      node=node.nextSibling;
+    }
+    return node;
+  }
+
+  function placeLibrarySourceSlots(groupKey,insertAt,sourceEls,parent){
+    const sourceSet=new Set(sourceEls);
+    const rows=libraryRowsForGroup(groupKey)
+      .filter(row=>!sourceSet.has(row));
+    insertAt=Math.max(0,Math.min(Number(insertAt)||0,rows.length));
+
+    const reference=rows[insertAt]||libraryGroupEndAnchor(groupKey);
+    sourceEls.forEach(row=>parent.insertBefore(row,reference));
+  }
+
+  function restoreLibraryGroupDomOrder(groupKey,orderedRows,parent){
+    const reference=libraryGroupEndAnchor(groupKey);
+    orderedRows.forEach(row=>parent.insertBefore(row,reference));
+  }
+
+  function reorderLibraryResourceSubset(currentIds,nextIds){
+    const subset=new Set(currentIds);
+    const resources=new Map(
+      colorLibrary
+        .filter(item=>subset.has(item.id))
+        .map(item=>[item.id,item])
+    );
+    let cursor=0;
+
+    colorLibrary=colorLibrary.map(item=>{
+      if(!subset.has(item.id))return item;
+      const replacement=resources.get(nextIds[cursor]);
+      cursor+=1;
+      return replacement||item;
+    });
+  }
+
+  function reorderSavedPaletteResourceSubset(palette,currentIds,nextIds){
+    const subset=new Set(currentIds);
+    const emitted=new Set();
+    let cursor=0;
+
+    palette.colors=(Array.isArray(palette.colors)?palette.colors:[])
+      .map(ref=>{
+        const resource=libraryResourceForPaletteRef(ref);
+        if(!resource || !subset.has(resource.id))return ref;
+        if(emitted.has(resource.id))return ref;
+
+        emitted.add(resource.id);
+        const nextId=nextIds[cursor];
+        cursor+=1;
+        return nextId||ref;
+      });
+  }
+
   function syncCurrentPaletteFromSavedMutation(list,affectedIndices,selectedValue){
     let index=Number(selectedValue);
 
@@ -31643,191 +31865,60 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return groups;
   }
 
-  function fillLibraryBatchGroupSelect(select,groups,kind){
-    if(!select)return;
+  function syncLibraryMultiSelectionUI(groups=buildLibraryGroups()){
+    const activeGroup=groups.find(group=>group.key===selectedLibraryGroupKey);
+    const validIds=new Set((activeGroup?.items||[]).map(item=>item.id));
 
-    const previous=select.value;
-    const fallback=kind==='source'
-      ? (groups.find(group=>group.key==='ungrouped' && group.items.length)?.key || groups[0]?.key || '')
-      : (groups.find(group=>group.key!=='ungrouped')?.key || 'ungrouped');
-
-    select.replaceChildren();
-
-    groups.forEach(group=>{
-      const option=document.createElement('option');
-      option.value=group.key;
-      option.textContent=kind==='source'
-        ? `${group.name}（${group.items.length}）`
-        : group.key==='ungrouped'
-          ? '未分组（从全部色板移除）'
-          : `加入：${group.name}`;
-      select.appendChild(option);
-    });
-
-    select.value=groups.some(group=>group.key===previous)
-      ? previous
-      : fallback;
-  }
-
-  function syncLibraryBatchRowSelection(){
-    $$('#libraryTableBody > .library-resource-row').forEach(row=>{
-      const selected=selectedLibraryResourceIds.has(row.dataset.id);
-      row.classList.toggle('batch-selected',selected);
-      const checkbox=row.querySelector('.library-batch-check');
-      if(checkbox)checkbox.checked=selected;
-    });
-  }
-
-  function syncLibraryBatchControls(groups=buildLibraryGroups()){
-    const validIds=new Set(colorLibrary.map(item=>item.id));
     selectedLibraryResourceIds.forEach(id=>{
       if(!validIds.has(id))selectedLibraryResourceIds.delete(id);
     });
 
-    const wrap=$('.library-table-wrap');
-    const modeBtn=$('#libraryBatchModeBtn');
+    if(!selectedLibraryResourceIds.size){
+      selectedLibraryGroupKey='';
+    }
+
+    $$('#libraryTableBody > .library-resource-row').forEach(row=>{
+      const selected=
+        row.dataset.groupKey===selectedLibraryGroupKey &&
+        selectedLibraryResourceIds.has(row.dataset.id);
+      row.classList.toggle('batch-selected',selected);
+      const checkbox=row.querySelector('.library-batch-check');
+      if(checkbox)checkbox.checked=selected;
+    });
+
     const actions=$('#libraryBatchActions');
     const summary=$('#libraryBatchSummary');
-    const source=$('#libraryBatchSource');
-    const target=$('#libraryBatchTarget');
-    const selectGroupBtn=$('#libraryBatchSelectGroupBtn');
-    const applyBtn=$('#libraryBatchApplyBtn');
-    const columnLabel=$('#libraryOrderColumnLabel');
-
-    wrap?.classList.toggle('batch-selecting',libraryBatchMode);
-    if(modeBtn){
-      modeBtn.setAttribute('aria-pressed',String(libraryBatchMode));
-      modeBtn.textContent=libraryBatchMode?'退出批量':'批量归类';
-    }
-    if(actions)actions.hidden=!libraryBatchMode;
-    if(columnLabel)columnLabel.textContent=libraryBatchMode?'选择':'排序';
-
-    fillLibraryBatchGroupSelect(source,groups,'source');
-    fillLibraryBatchGroupSelect(target,groups,'target');
-
     const count=selectedLibraryResourceIds.size;
-    if(summary)summary.textContent=`已选 ${count} 个`;
-
-    const sourceGroup=groups.find(group=>group.key===source?.value);
-    const sourceIds=(sourceGroup?.items||[]).map(item=>item.id);
-    const allSourceSelected=
-      sourceIds.length>0 &&
-      sourceIds.every(id=>selectedLibraryResourceIds.has(id));
-
-    if(selectGroupBtn){
-      selectGroupBtn.disabled=!sourceIds.length;
-      selectGroupBtn.textContent=allSourceSelected?'取消本组':'全选来源组';
+    if(actions)actions.hidden=!count;
+    if(summary){
+      summary.textContent=count
+        ? `已选 ${count} 个 · ${activeGroup?.name||'当前分组'}`
+        : '已选 0 个';
     }
-
-    if(applyBtn){
-      applyBtn.disabled=!count || !target?.value;
-      applyBtn.textContent=target?.value==='ungrouped'
-        ? '移至未分组'
-        : '批量加入';
-    }
-
-    syncLibraryBatchRowSelection();
   }
 
-  function toggleLibraryBatchMode(){
-    libraryBatchMode=!libraryBatchMode;
-    if(!libraryBatchMode)selectedLibraryResourceIds.clear();
-    syncLibraryBatchControls();
+  function setLibraryResourceSelected(id,groupKey,checked){
+    if(!id || !groupKey)return;
+
+    if(checked){
+      if(selectedLibraryGroupKey && selectedLibraryGroupKey!==groupKey){
+        selectedLibraryResourceIds.clear();
+        toast('已切换到新的分组；同一次拖动只在一个分组内排序');
+      }
+      selectedLibraryGroupKey=groupKey;
+      selectedLibraryResourceIds.add(id);
+    }else if(selectedLibraryGroupKey===groupKey){
+      selectedLibraryResourceIds.delete(id);
+      if(!selectedLibraryResourceIds.size)selectedLibraryGroupKey='';
+    }
+
+    syncLibraryMultiSelectionUI();
   }
 
-  function toggleLibraryBatchSourceGroup(){
-    const groups=buildLibraryGroups();
-    const sourceKey=$('#libraryBatchSource')?.value;
-    const group=groups.find(item=>item.key===sourceKey);
-    const ids=(group?.items||[]).map(item=>item.id);
-    if(!ids.length)return;
-
-    const allSelected=ids.every(id=>selectedLibraryResourceIds.has(id));
-    ids.forEach(id=>{
-      if(allSelected)selectedLibraryResourceIds.delete(id);
-      else selectedLibraryResourceIds.add(id);
-    });
-    syncLibraryBatchControls(groups);
-  }
-
-  async function applyLibraryBatchGrouping(){
-    const ids=[...selectedLibraryResourceIds].filter(id=>findFillById(id));
-    const targetKey=$('#libraryBatchTarget')?.value||'';
-    if(!ids.length){
-      toast('请先勾选要归类的颜色');
-      return false;
-    }
-
-    const nextList=deepClone(savedPalettes());
-    const targetIndex=paletteGroupIndex(targetKey);
-    const affectedIndices=new Set();
-    const beforeJson=JSON.stringify(nextList.map(p=>p.colors||[]));
-
-    if(targetKey==='ungrouped'){
-      nextList.forEach((palette,index)=>{
-        let colors=Array.isArray(palette.colors)?palette.colors:[];
-        ids.forEach(id=>{
-          const resource=findFillById(id);
-          if(resource)colors=paletteWithoutResource(colors,resource);
-        });
-
-        if(JSON.stringify(colors)!==JSON.stringify(palette.colors||[])){
-          palette.colors=colors;
-          palette.savedAt=Date.now();
-          affectedIndices.add(index);
-        }
-      });
-    }else if(targetIndex>=0 && nextList[targetIndex]){
-      ids.forEach(id=>{
-        const resource=findFillById(id);
-        if(resource){
-          insertResourceIntoSavedPalette(
-            nextList[targetIndex],
-            resource,
-            nextList[targetIndex].colors?.length||0
-          );
-        }
-      });
-      affectedIndices.add(targetIndex);
-    }else{
-      toast('目标色板已经不存在，请重新选择');
-      syncLibraryBatchControls();
-      return false;
-    }
-
-    const changed=beforeJson!==JSON.stringify(nextList.map(p=>p.colors||[]));
-    if(!changed){
-      toast(targetKey==='ungrouped'?'这些颜色已经在未分组':'这些颜色已经全部在目标色板中');
-      return false;
-    }
-
-    pushHistory();
-    writeSavedPalettes(nextList,{reason:'library-batch-grouping'});
-
-    syncCurrentPaletteFromSavedMutation(
-      nextList,
-      affectedIndices,
-      $('#savedPalettes')?.value ?? ''
-    );
-
-    const targetName=targetKey==='ungrouped'
-      ? '未分组'
-      : (nextList[targetIndex]?.name||'目标色板');
-
+  function clearLibraryMultiSelection(){
     selectedLibraryResourceIds.clear();
-    renderSavedPalettes();
-    renderPalette();
-    renderRoles();
-    renderLibraryTable();
-    renderPaletteLibrarySearch();
-    syncInterfaceMotionBaseline();
-
-    toast(
-      targetKey==='ungrouped'
-        ? `已将 ${ids.length} 个颜色移至“未分组”`
-        : `已将 ${ids.length} 个颜色批量加入“${targetName}”`
-    );
-    return true;
+    selectedLibraryGroupKey='';
+    syncLibraryMultiSelectionUI();
   }
 
   function libraryGroupForResourceId(id){
@@ -32177,13 +32268,23 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         .getPropertyValue('--library-table-head-height')
     ) || 42;
     const boundary=wrapRect.top+headOffset;
-    let current=rows[0];
+    let current=null;
 
     rows.forEach(row=>{
       if(row.getBoundingClientRect().top<=boundary+1){
         current=row;
       }
     });
+
+    // 分组标题还没有被表头遮住时，不需要悬浮标题；
+    // 否则会出现“默认色板”标题上下重复的视觉重叠。
+    if(!current){
+      overlay.hidden=true;
+      overlay.replaceChildren();
+      overlay.dataset.groupKey='';
+      overlay._sourceButton=null;
+      return;
+    }
 
     const key=current.dataset.groupKey||'';
     const original=current.querySelector('.library-group-head');
@@ -32260,7 +32361,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             <span class="library-group-arrow">▼</span>
             <span>${group.name}</span>
             <span class="library-group-count">${group.items.length}</span>
-            <span class="library-group-source">${group.key==='ungrouped'?'未被任何已保存色板引用':'来自已保存色板 · 可拖到其他分组同时加入'}</span>
+            <span class="library-group-source">${group.key==='ungrouped'?'未被任何已保存色板引用':'来自已保存色板 · 拖到其他分类即移动，勾选多个可整批移动'}</span>
           </button>
         </th>`;
       box.appendChild(header);
@@ -32274,7 +32375,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         empty.innerHTML=`<td colspan="9">${
           group.key==='ungrouped'
             ? '当前没有未分组资源'
-            : '这个色板里暂时没有已加入色库的资源，可从其他分组拖进来'
+            : '这个色板里暂时没有已加入色库的资源，可从其他分类拖进来'
         }</td>`;
         box.appendChild(empty);
       }
@@ -32284,7 +32385,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         tr.className=
           'library-resource-row'+
           (collapsed?' group-hidden':'')+
-          (selectedLibraryResourceIds.has(c.id)?' batch-selected':'');
+          (
+            selectedLibraryGroupKey===group.key &&
+            selectedLibraryResourceIds.has(c.id)
+              ? ' batch-selected'
+              : ''
+          );
         tr.draggable=false;
         tr.dataset.id=c.id;
         tr.dataset.groupKey=group.key;
@@ -32297,13 +32403,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           <td class="library-order-cell">
             <input class="library-batch-check"
                    data-id="${c.id}"
+                   data-group-key="${group.key}"
                    type="checkbox"
                    aria-label="选择该颜色"
-                   ${selectedLibraryResourceIds.has(c.id)?'checked':''}/>
+                   ${
+                     selectedLibraryGroupKey===group.key &&
+                     selectedLibraryResourceIds.has(c.id)
+                       ? 'checked'
+                       : ''
+                   }/>
             <span class="library-drag-grip"
                   data-id="${c.id}"
                   data-group-key="${group.key}"
-                  title="拖动排序；可拖到其他分组并同步对应色板">⋮⋮</span>
+                  title="拖动排序；拖到其他分类即移动；勾选多个颜色后可整批移动">⋮⋮</span>
           </td>
           <td><span class="fill-preview" style="${fillPreviewStyle(c.id)}"></span></td>
           <td><input class="lib-name-input" data-id="${c.id}" data-group-key="${group.key}" type="text" value="${c.name||''}" placeholder="${isTexture?'纹理名称':'颜色名字'}"/>${aliasLabel?`<span class="same-hex-alias-badge">${aliasLabel}</span>`:''}</td>
@@ -32331,7 +32443,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
     });
 
-    syncLibraryBatchControls(groups);
+    syncLibraryMultiSelectionUI(groups);
     syncLibraryStickyGroup();
     scheduleLibraryStickyGroupSync();
 
@@ -32346,9 +32458,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const id=e.currentTarget.dataset.id;
         if(!id)return;
 
-        if(e.currentTarget.checked)selectedLibraryResourceIds.add(id);
-        else selectedLibraryResourceIds.delete(id);
-        syncLibraryBatchControls(groups);
+        setLibraryResourceSelected(
+          id,
+          e.currentTarget.dataset.groupKey,
+          e.currentTarget.checked
+        );
       };
     });
 
@@ -32576,12 +32690,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('已删除，关联色板与历史配色已安全处理');
     });
 
-    // 只允许从左侧抓手开始拖动；现在允许跨分组。
+    // 色库拖拽统一逻辑：
+    // - 抓住已勾选行：移动/排序整个选中集合（1 个或多个）
+    // - 抓住未勾选行：只移动这一行
+    // - 同一分类内 = 排序；拖到其他分类 = 移动（从原分类移除，加入目标分类）
     $$('.library-drag-grip').forEach(grip=>{
       grip.draggable=false;
       grip.removeAttribute('draggable');
 
       grip.onpointerdown=e=>{
+        if(($('#librarySearch')?.value||'').trim()){
+          toast('请先清空搜索，再进行排序');
+          return;
+        }
+
         draggedLibraryId=grip.dataset.id;
         draggedLibraryGroupKey=grip.dataset.groupKey;
 
@@ -32589,46 +32711,64 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const sourceRow=grip.closest('tr');
         const parent=sourceRow.parentElement;
 
-        const sourceRows=libraryRowsForGroup(sourceGroupKey,sourceRow);
-        const allSourceGroupRows=$$('.library-resource-row')
-          .filter(r=>r.dataset.groupKey===sourceGroupKey);
+        const useSelectedBlock=
+          selectedLibraryGroupKey===sourceGroupKey &&
+          selectedLibraryResourceIds.has(draggedLibraryId);
 
+        const movingIds=useSelectedBlock
+          ? [...selectedLibraryResourceIds].filter(id=>!!findFillById(id))
+          : [draggedLibraryId];
+        const movingSet=new Set(movingIds);
+
+        const sourceEls=$$('.library-resource-row').filter(r=>
+          movingSet.has(r.dataset.id) &&
+          r.dataset.groupKey===sourceGroupKey &&
+          !r.classList.contains('group-hidden')
+        );
+        if(!sourceEls.length){
+          draggedLibraryId=null;
+          draggedLibraryGroupKey=null;
+          return;
+        }
+
+        const originalSourceRows=libraryRowsForGroup(sourceGroupKey);
         const initialIndex=Math.max(
           0,
-          allSourceGroupRows.indexOf(sourceRow)
+          Math.min(...sourceEls.map(row=>originalSourceRows.indexOf(row)))
         );
 
         pendingLibraryDrop={
           sourceGroupKey,
           targetGroupKey:sourceGroupKey,
           insertAt:initialIndex,
-          groupIds:sourceRows.map(r=>r.dataset.id)
+          movingIds
         };
 
-        beginPointerSort(e,{
-          sourceEls:[sourceRow],
+        const started=beginPointerSort(e,{
+          sourceEls,
           parent,
           type:'table',
           initialInsertAt:initialIndex,
 
-          // 返回全部可见行，保证从一个分组移动到另一个分组时，
-          // 两边的行都能自然让位。
           getRemainingElements:()=>$$('#libraryTableBody > .library-resource-row')
-            .filter(r=>r!==sourceRow && !r.classList.contains('group-hidden')),
+            .filter(r=>!sourceEls.includes(r) && !r.classList.contains('group-hidden')),
 
           placeSourceSlots:(insertAt,rows,sourceEls,parent)=>{
             const targetKey=pendingLibraryDrop?.targetGroupKey||sourceGroupKey;
-            placeLibrarySourceSlot(targetKey,insertAt,sourceEls[0],parent);
+            placeLibrarySourceSlots(targetKey,insertAt,sourceEls,parent);
           },
 
           restoreSourceSlots:(insertAt,rows,sourceEls,parent)=>{
-            placeLibrarySourceSlot(sourceGroupKey,initialIndex,sourceEls[0],parent);
+            restoreLibraryGroupDomOrder(
+              sourceGroupKey,
+              originalSourceRows,
+              parent
+            );
           },
 
           onMove:ev=>{
             const targetKey=libraryGroupKeyAtY(ev.clientY);
             if(!targetKey)return;
-
             updateLibraryPendingDrop(ev.clientY,targetKey);
           },
 
@@ -32641,6 +32781,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             clearLibraryDropTarget();
           }
         });
+
+        if(!started){
+          draggedLibraryId=null;
+          draggedLibraryGroupKey=null;
+          pendingLibraryDrop=null;
+          clearLibraryDropTarget();
+        }
       };
     });
   }
@@ -33347,6 +33494,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const library=$('#colorLibraryPage');
     libraryStickyGroupSuppressed=false;
     suppressAppleLayoutMotion(1200);
+
+    // 兼容旧版本留下的数据：当前正在使用的色板如果尚未同步分类，
+    // 打开色库时先归回当前色板，避免有效颜色堆在“未分组”。
+    if((state.palette||[]).length){
+      syncActiveSavedPaletteFromCurrent({createIfMissing:true});
+    }
 
     // 先在隐藏层完成表格、分组、纹理准备。
     renderLibraryTable();
@@ -38824,6 +38977,7 @@ ${sheets.join('\n')}
 
     state.palette.push(resource.id);
     saveColorLibrary();
+    syncActiveSavedPaletteFromCurrent({createIfMissing:true});
 
     return resource;
   }
@@ -39290,17 +39444,7 @@ ${sheets.join('\n')}
   $('#backToDesignBtn').onclick=showDesignPage;
   $('#librarySearch').oninput=renderLibraryTable;
   $('#addLibraryColorBtn').onclick=()=>addLibraryColor();
-  $('#libraryBatchModeBtn').onclick=toggleLibraryBatchMode;
-  $('#libraryBatchSource').onchange=()=>syncLibraryBatchControls();
-  $('#libraryBatchTarget').onchange=()=>syncLibraryBatchControls();
-  $('#libraryBatchSelectGroupBtn').onclick=toggleLibraryBatchSourceGroup;
-  $('#libraryBatchClearBtn').onclick=()=>{
-    selectedLibraryResourceIds.clear();
-    syncLibraryBatchControls();
-  };
-  $('#libraryBatchApplyBtn').onclick=()=>{
-    void applyLibraryBatchGrouping();
-  };
+  $('#libraryBatchClearBtn').onclick=clearLibraryMultiSelection;
   const textureUploadButton=$('#addTextureBtn');
   const textureUploadInput=$('#textureFileInput');
   textureUploadButton.onclick=()=>{
@@ -41324,6 +41468,7 @@ $('#addStripeBtn').onclick=()=>{
     }
 
     let created=false;
+    let updatedInPlace=false;
 
     const finalName=
       typedName ||
@@ -41332,6 +41477,29 @@ $('#addStripeBtn').onclick=()=>{
 
     // 所有真正写入都从这里开始，因此一步撤销即可恢复 palette + library。
     pushHistory();
+
+    // 调整当前色板中的颜色时，优先保留原色号并直接更新名称 / HEX。
+    // 只有这个色号还被其他已保存色板使用时才建立独立资源，避免改动别的色板。
+    if(
+      !lib &&
+      action.mode==='replace' &&
+      currentPaletteResource?.type==='solid'
+    ){
+      const activeSavedId=String(state.activeSavedPaletteId||'');
+      const usedByOtherSavedPalette=
+        listSavedPaletteUsage(currentPaletteResource.id)
+          .matches
+          .some(match=>
+            !activeSavedId || String(match.id)!==activeSavedId
+          );
+
+      if(!usedByOtherSavedPalette){
+        currentPaletteResource.name=finalName;
+        currentPaletteResource.hex=h;
+        lib=currentPaletteResource;
+        updatedInPlace=true;
+      }
+    }
 
     if(!lib){
       lib={
@@ -41368,6 +41536,13 @@ $('#addStripeBtn').onclick=()=>{
           replacedResourceId=currentPaletteResource.id;
         }
         state.palette[paletteIndex]=lib.id;
+
+        if(replacedResourceId){
+          migrateCurrentRolesToLibraryResource(
+            replacedResourceId,
+            lib
+          );
+        }
       }
     }else{
       const rawIndex=state.palette.findIndex(ref=>{
@@ -41396,13 +41571,16 @@ $('#addStripeBtn').onclick=()=>{
       }
     }
 
-    if(action.mode==='replace'){
-      syncActiveSavedPaletteFromCurrent({createIfMissing:true});
-    }
+    // 新增、图片取色和替换都立即同步到当前色板分类，
+    // 不再先落入“未分组”等用户手工搬运。
+    syncActiveSavedPaletteFromCurrent({createIfMissing:true});
 
     const removedReplacedResource=
       !!replacedResourceId &&
-      removeReplacedLibraryResourceIfUnused(replacedResourceId);
+      removeReplacedLibraryResourceIfUnused(
+        replacedResourceId,
+        {detachHistoricSolidRefs:true}
+      );
 
     saveColorLibrary();
     closeColorNameDialog();
@@ -41459,7 +41637,9 @@ $('#addStripeBtn').onclick=()=>{
 
     toast(
       action.mode==='replace'
-        ? `已替换色板：${lib.name} · ID ${lib.id}${removedReplacedResource?'；旧色已清理':''}；可撤销`
+        ? updatedInPlace
+          ? `已更新原色号：${lib.name} · ID ${lib.id}；可撤销`
+          : `已替换色板：${lib.name} · ID ${lib.id}${removedReplacedResource?'；旧色已清理':''}；可撤销`
         : `${created?'已加入色板并入库':'已定位已有色卡'}：${lib.name} · ID ${lib.id}`
     );
   }

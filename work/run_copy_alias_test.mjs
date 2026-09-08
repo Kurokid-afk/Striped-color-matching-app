@@ -14,6 +14,7 @@ const testHtmlPath = path.join(testRoot, "copy_alias_test.html");
 const injection = `
 window.addEventListener('load', async () => {
   const checks = [];
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const check = (name, value, detail = '') => {
     checks.push({ name, passed: !!value, detail });
     if (!value) throw new Error(name + (detail ? ': ' + detail : ''));
@@ -184,7 +185,7 @@ window.addEventListener('load', async () => {
     state.paletteName = '清理测试';
     state.palette = ['C700'];
     state.roles = {
-      A: { fillId: 'C003', color: '#EEE9DE', name: '米白', locked: false }
+      A: { fillId: 'C700', color: '#765432', name: '待替换旧色', locked: false }
     };
     state.stripes = [{ lanes: 1, role: 'A', _sortId: 'cleanup-a' }];
     openColorNameDialog('#EEE9DE', { mode: 'replace', paletteIndex: 0 });
@@ -197,6 +198,7 @@ window.addEventListener('load', async () => {
     confirmNamedColorToPalette();
     check('replaced orphan color is removed from library', !findFillById('C700'));
     check('replaced orphan color does not fall into ungrouped', !buildLibraryGroups().find(group => group.key === 'ungrouped')?.items.some(item => item.id === 'C700'));
+    check('active roles follow the replacement instead of retaining the old color number', state.roles.A.fillId === 'C003', String(state.roles.A.fillId));
 
     colorLibrary.push({ id: 'C701', type: 'solid', name: '共享旧色', hex: '#654321' });
     writeSavedPalettes([
@@ -210,6 +212,32 @@ window.addEventListener('load', async () => {
     document.querySelector('#colorNameDialogInput').value = '米白';
     confirmNamedColorToPalette();
     check('replaced color still used by another palette is preserved', !!findFillById('C701'));
+    check('shared old color remains grouped instead of becoming ungrouped', buildLibraryGroups().find(group => group.key === 'palette_1')?.items.some(item => item.id === 'C701'));
+
+    colorLibrary.push({ id: 'C702', type: 'solid', name: '原色号', hex: '#102030' });
+    writeSavedPalettes([
+      { id: 'pal-update-in-place', name: '原位更新', colors: ['C702'], savedAt: 1 }
+    ], { touchAssets: false, reason: 'replacement-in-place-test' });
+    state.activeSavedPaletteId = 'pal-update-in-place';
+    state.paletteName = '原位更新';
+    state.palette = ['C702'];
+    state.roles = {
+      A: { fillId: 'C702', color: '#102030', name: '原色号', locked: false }
+    };
+    state.stripes = [{ lanes: 1, role: 'A', _sortId: 'in-place-a' }];
+    const libraryCountBeforeInPlace = colorLibrary.length;
+    openColorNameDialog('#A1B2C3', { mode: 'replace', paletteIndex: 0 });
+    confirmNamedColorToPalette();
+    check('new hex updates the original color number in place', state.palette[0] === 'C702' && findFillById('C702')?.hex === '#A1B2C3', JSON.stringify({palette:state.palette, resource:findFillById('C702')}));
+    check('in-place color update does not create an extra library row', colorLibrary.length === libraryCountBeforeInPlace, String(colorLibrary.length));
+    check('in-place updated color stays in its saved palette group', savedPalettes()[0]?.colors?.[0] === 'C702' && !buildLibraryGroups().find(group => group.key === 'ungrouped')?.items.some(item => item.id === 'C702'));
+
+    const sampled = addHexToPaletteAsLibraryResource('#B4C5D6', {
+      nameHint: '图片取色',
+      silent: true
+    });
+    check('image-picked color immediately joins the active saved palette', !!sampled && savedPalettes()[0]?.colors?.includes(sampled.id), JSON.stringify(savedPalettes()[0]?.colors));
+    check('image-picked color never flashes into ungrouped', !!sampled && !buildLibraryGroups().find(group => group.key === 'ungrouped')?.items.some(item => item.id === sampled.id));
 
     colorLibrary = libraryBeforeReplacementCleanup;
     writeSavedPalettes(palettesBeforeReplacementCleanup, { touchAssets: false, reason: 'replacement-cleanup-test-restore' });
@@ -221,57 +249,173 @@ window.addEventListener('load', async () => {
     saveColorLibrary();
     renderAll();
 
-    const libraryBeforeBatchGrouping = deepClone(colorLibrary);
-    const palettesBeforeBatchGrouping = deepClone(savedPalettes());
-    const paletteBeforeBatchGrouping = deepClone(state.palette);
-    const activeBeforeBatchGrouping = state.activeSavedPaletteId;
-    const nameBeforeBatchGrouping = state.paletteName;
+    const libraryBeforeMultiSort = deepClone(colorLibrary);
+    const palettesBeforeMultiSort = deepClone(savedPalettes());
+    const paletteBeforeMultiSort = deepClone(state.palette);
+    const activeBeforeMultiSort = state.activeSavedPaletteId;
+    const nameBeforeMultiSort = state.paletteName;
 
+    await showColorLibrary();
     colorLibrary = [
-      { id: 'C810', type: 'solid', name: '批量甲', hex: '#123456' },
-      { id: 'C811', type: 'solid', name: '批量乙', hex: '#234567' },
-      { id: 'C812', type: 'solid', name: '批量丙', hex: '#345678' }
+      { id: 'C810', type: 'solid', name: '排序甲', hex: '#123456' },
+      { id: 'C811', type: 'solid', name: '排序乙', hex: '#234567' },
+      { id: 'C812', type: 'solid', name: '排序丙', hex: '#345678' },
+      { id: 'C813', type: 'solid', name: '排序丁', hex: '#456789' },
+      { id: 'C814', type: 'solid', name: '排序戊', hex: '#56789A' },
+      { id: 'C815', type: 'solid', name: '排序己', hex: '#6789AB' },
+      { id: 'C816', type: 'solid', name: '未分组甲', hex: '#789ABC' },
+      { id: 'C817', type: 'solid', name: '未分组乙', hex: '#89ABCD' }
     ];
     writeSavedPalettes([
-      { id: 'pal-batch-target', name: '批量目标', colors: [], savedAt: 1 },
-      { id: 'pal-batch-source', name: '批量来源', colors: ['C812'], savedAt: 2 }
-    ], { touchAssets: false, reason: 'batch-grouping-test' });
-    state.activeSavedPaletteId = 'pal-batch-target';
-    state.paletteName = '批量目标';
-    state.palette = [];
-    libraryBatchMode = false;
+      {
+        id: 'pal-multi-sort',
+        name: '自由多选排序',
+        colors: ['C810', 'C811', 'C812', 'C813', 'C814', 'C815'],
+        savedAt: 1
+      },
+      {
+        id: 'pal-multi-sort-other',
+        name: '另一分组',
+        colors: ['C810', 'C812'],
+        savedAt: 2
+      }
+    ], { touchAssets: false, reason: 'multi-sort-test' });
+    state.activeSavedPaletteId = 'pal-multi-sort';
+    state.paletteName = '自由多选排序';
+    state.palette = ['C810', 'C811', 'C812', 'C813', 'C814', 'C815'];
     selectedLibraryResourceIds.clear();
+    selectedLibraryGroupKey = '';
     renderLibraryTable();
-    toggleLibraryBatchMode();
-    document.querySelector('#libraryBatchSource').value = 'ungrouped';
-    syncLibraryBatchControls();
-    toggleLibraryBatchSourceGroup();
-    check('batch mode selects every color in the source group', selectedLibraryResourceIds.size === 2, String(selectedLibraryResourceIds.size));
-    check('batch mode swaps drag grips for selection boxes', document.querySelector('.library-table-wrap')?.classList.contains('batch-selecting') && getComputedStyle(document.querySelector('.library-batch-check')).display !== 'none');
+    syncLibraryStickyGroup();
+    check('sticky group header stays hidden while first group title is fully visible', document.querySelector('#libraryStickyGroup')?.hidden === true);
 
-    document.querySelector('#libraryBatchTarget').value = 'palette_0';
-    await applyLibraryBatchGrouping();
-    let batchPalettes = savedPalettes();
-    check('batch grouping adds all selected colors to one palette', batchPalettes[0]?.colors?.join('|') === 'C810|C811', batchPalettes[0]?.colors?.join('|'));
-    check('batch grouped colors leave ungrouped automatically', buildLibraryGroups().find(group => group.key === 'ungrouped')?.items?.length === 0);
+    setLibraryResourceSelected('C811', 'palette_0', true);
+    setLibraryResourceSelected('C814', 'palette_0', true);
+    const selectedRows = [...document.querySelectorAll('.library-resource-row.batch-selected')]
+      .map(row => row.dataset.id);
+    check('library allows non-contiguous multi-selection', selectedRows.join('|') === 'C811|C814', JSON.stringify({selectedRows, selectedLibraryGroupKey, selectedIds:[...selectedLibraryResourceIds], groups:buildLibraryGroups().map(group => ({key:group.key, ids:group.items.map(item => item.id)}))}));
+    check('library keeps drag grips visible beside selection boxes', getComputedStyle(document.querySelector('.library-batch-check')).display !== 'none' && getComputedStyle(document.querySelector('.library-drag-grip')).display !== 'none');
+    check('multi-sort guidance appears only while colors are selected', !document.querySelector('#libraryBatchActions')?.hidden && document.querySelector('#libraryBatchSummary')?.textContent.includes('已选 2 个'));
 
-    selectedLibraryResourceIds = new Set(['C810', 'C812']);
-    document.querySelector('#libraryBatchTarget').value = 'ungrouped';
-    syncLibraryBatchControls();
-    await applyLibraryBatchGrouping();
-    batchPalettes = savedPalettes();
-    check('moving a batch to ungrouped removes every palette reference', batchPalettes[0]?.colors?.join('|') === 'C811' && !batchPalettes[1]?.colors?.length, JSON.stringify(batchPalettes.map(item => item.colors)));
+    const dragGrip = document.querySelector('.library-drag-grip[data-group-key="palette_0"][data-id="C811"]');
+    const dragTarget = document.querySelector('.library-resource-row[data-group-key="palette_0"][data-id="C815"]');
+    const dragGripRect = dragGrip.getBoundingClientRect();
+    const dragTargetRect = dragTarget.getBoundingClientRect();
+    dragGrip.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 91,
+      clientX: dragGripRect.left + dragGripRect.width / 2,
+      clientY: dragGripRect.top + dragGripRect.height / 2
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 91,
+      clientX: dragTargetRect.left + dragTargetRect.width / 2,
+      clientY: dragTargetRect.bottom - 1
+    }));
+    window.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 91,
+      clientX: dragTargetRect.left + dragTargetRect.width / 2,
+      clientY: dragTargetRect.bottom - 1
+    }));
+    await wait(360);
+    const draggedPaletteOrder = savedPalettes()[0]?.colors?.join('|') || '';
+    check('dragging one selected handle moves every selected row together', draggedPaletteOrder === 'C810|C812|C813|C815|C811|C814', draggedPaletteOrder);
+    check('multi-drag preserves selected colors relative order', draggedPaletteOrder.endsWith('C811|C814'), draggedPaletteOrder);
 
-    colorLibrary = libraryBeforeBatchGrouping;
-    writeSavedPalettes(palettesBeforeBatchGrouping, { touchAssets: false, reason: 'batch-grouping-test-restore' });
-    state.palette = paletteBeforeBatchGrouping;
-    state.activeSavedPaletteId = activeBeforeBatchGrouping;
-    state.paletteName = nameBeforeBatchGrouping;
-    libraryBatchMode = false;
+    const sortedPalette = {
+      colors: ['C810', 'C811', 'C812', 'C813', 'C814', 'C815']
+    };
+    reorderSavedPaletteResourceSubset(
+      sortedPalette,
+      ['C810', 'C811', 'C812', 'C813', 'C814', 'C815'],
+      ['C811', 'C814', 'C810', 'C812', 'C813', 'C815']
+    );
+    check('multi-sort moves separated colors as one stable block', sortedPalette.colors.join('|') === 'C811|C814|C810|C812|C813|C815', sortedPalette.colors.join('|'));
+
+    reorderLibraryResourceSubset(
+      ['C816', 'C817'],
+      ['C817', 'C816']
+    );
+    check('ungrouped multi-sort changes only its own resource slots', colorLibrary.map(item => item.id).join('|') === 'C810|C811|C812|C813|C814|C815|C817|C816', colorLibrary.map(item => item.id).join('|'));
+
+    setLibraryResourceSelected('C810', 'palette_1', true);
+    check('starting selection in another group clears the previous group', selectedLibraryGroupKey === 'palette_1' && selectedLibraryResourceIds.size === 1 && selectedLibraryResourceIds.has('C810'));
+    clearLibraryMultiSelection();
+    check('clearing multi-selection restores idle controls', selectedLibraryResourceIds.size === 0 && selectedLibraryGroupKey === '' && document.querySelector('#libraryBatchActions')?.hidden === true);
+
+    const crossGrip = document.querySelector('.library-drag-grip[data-group-key="palette_0"][data-id="C813"]');
+    const crossHeader = document.querySelector('.library-group-row[data-group-key="palette_1"]');
+    const crossGripRect = crossGrip.getBoundingClientRect();
+    const crossHeaderRect = crossHeader.getBoundingClientRect();
+    crossGrip.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 92,
+      clientX: crossGripRect.left + crossGripRect.width / 2,
+      clientY: crossGripRect.top + crossGripRect.height / 2
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 92,
+      clientX: crossHeaderRect.left + crossHeaderRect.width / 2,
+      clientY: crossHeaderRect.top + crossHeaderRect.height / 2
+    }));
+    window.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 92,
+      clientX: crossHeaderRect.left + crossHeaderRect.width / 2,
+      clientY: crossHeaderRect.top + crossHeaderRect.height / 2
+    }));
+    await wait(360);
+    const crossPaletteColors = savedPalettes()[1]?.colors?.join('|') || '';
+    check('single-row drag moves into another palette group', crossPaletteColors.split('|').includes('C813'), crossPaletteColors);
+    check('cross-palette drag removes it from the original palette (move, not copy)', !(savedPalettes()[0]?.colors || []).includes('C813'));
+
+    // 多选跨分类移动：勾选两个不连续颜色，整批拖到另一个色板。
+    setLibraryResourceSelected('C815', 'palette_0', true);
+    setLibraryResourceSelected('C811', 'palette_0', true);
+    const multiCrossGrip = document.querySelector('.library-drag-grip[data-group-key="palette_0"][data-id="C815"]');
+    const multiCrossHeader = document.querySelector('.library-group-row[data-group-key="palette_1"]');
+    const multiCrossGripRect = multiCrossGrip.getBoundingClientRect();
+    const multiCrossHeaderRect = multiCrossHeader.getBoundingClientRect();
+    multiCrossGrip.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 93,
+      clientX: multiCrossGripRect.left + multiCrossGripRect.width / 2,
+      clientY: multiCrossGripRect.top + multiCrossGripRect.height / 2
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 93,
+      clientX: multiCrossHeaderRect.left + multiCrossHeaderRect.width / 2,
+      clientY: multiCrossHeaderRect.top + multiCrossHeaderRect.height / 2
+    }));
+    window.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, cancelable: true, button: 0, pointerId: 93,
+      clientX: multiCrossHeaderRect.left + multiCrossHeaderRect.width / 2,
+      clientY: multiCrossHeaderRect.top + multiCrossHeaderRect.height / 2
+    }));
+    await wait(360);
+    const multiCrossSource = savedPalettes()[0]?.colors || [];
+    const multiCrossTarget = savedPalettes()[1]?.colors || [];
+    check('multi-selected rows move across palettes together', multiCrossTarget.includes('C815') && multiCrossTarget.includes('C811'), multiCrossTarget.join('|'));
+    check('multi-cross removes every moved row from the source palette', !multiCrossSource.includes('C815') && !multiCrossSource.includes('C811'), multiCrossSource.join('|'));
+    check('multi-cross preserves the selected block order', multiCrossTarget.indexOf('C815') < multiCrossTarget.indexOf('C811'), multiCrossTarget.join('|'));
+
+    colorLibrary = libraryBeforeMultiSort;
+    writeSavedPalettes(palettesBeforeMultiSort, { touchAssets: false, reason: 'multi-sort-test-restore' });
+    state.palette = paletteBeforeMultiSort;
+    state.activeSavedPaletteId = activeBeforeMultiSort;
+    state.paletteName = nameBeforeMultiSort;
     selectedLibraryResourceIds.clear();
+    selectedLibraryGroupKey = '';
     saveColorLibrary();
     renderAll();
     renderLibraryTable();
+    await showDesignPage();
+
+    const rolePickerButton = document.querySelector('.stripe-item .stripe-role-picker');
+    openStripeRolePopover(rolePickerButton, 0);
+    check('stripe role popover opens for color selection', !!stripeRolePopover && !!document.querySelector('.stripe-role-popover'));
+    stripeRolePopover.dispatchEvent(new Event('scroll', { bubbles: false }));
+    check('role popover stays open when its own color list scrolls', !!stripeRolePopover && !!document.querySelector('.stripe-role-popover'));
+    const stripeListSidebar = document.querySelector('.sidebar');
+    stripeListSidebar.dispatchEvent(new Event('scroll', { bubbles: false }));
+    await wait(320);
+    check('role popover closes when the surrounding list scrolls', !stripeRolePopover && !document.querySelector('.stripe-role-popover'));
 
     setCopyImageMode('standard', { persist: false });
     const modeSwitchBefore = document.querySelector('#copyImageModeSwitch')?.getBoundingClientRect();

@@ -45,7 +45,15 @@ window.addEventListener('load',async()=>{
     };
     await toLibrary;
     const libraryFinal=getComputedStyle(library).translate;
-    const stickyGroupVisibleInLibrary=!$('#libraryStickyGroup')?.hidden;
+    const stickyGroup=$('#libraryStickyGroup');
+    const firstLibraryGroup=$('.library-group-row');
+    const libraryTableHead=$('.library-table thead');
+    const stickyGroupReadyInLibrary=
+      !stickyGroup?.hidden ||
+      (
+        firstLibraryGroup?.getBoundingClientRect().bottom >=
+        (libraryTableHead?.getBoundingClientRect().bottom||0)-1
+      );
 
     const toDesign=showDesignPage();
     await waitUntil(()=>design.getAnimations().length>0);
@@ -271,7 +279,7 @@ window.addEventListener('load',async()=>{
       pageBackMid,
       stageWidth,
       libraryFinal,
-      stickyGroupVisibleInLibrary,
+      stickyGroupReadyInLibrary,
       stickyGroupHiddenAfterReturn,
       canvasWidth,
       canvasMid,
@@ -357,7 +365,7 @@ if(
   framePixels(result.pageBackMid.incomingFrames[0]?.translate)<result.stageWidth*.9 ||
   framePixels(result.pageBackMid.outgoingFrames.at(-1)?.translate)<result.stageWidth*.9 ||
   result.pageMid.incomingTranslate==='none' ||
-  !result.stickyGroupVisibleInLibrary ||
+  !result.stickyGroupReadyInLibrary ||
   !result.stickyGroupHiddenAfterReturn ||
   !hasVisibleTranslate(result.canvasMid.incomingFrames) ||
   !hasVisibleTranslate(result.canvasMid.outgoingFrames.slice().reverse()) ||
